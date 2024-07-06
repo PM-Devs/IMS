@@ -1,239 +1,152 @@
-# Software Requirements Specification (SRS)
+# Comprehensive Internship Management System (IMS)
 
-## Comprehensive Internship Management System (IMS)
+## Introduction
 
-### 1. Introduction
+The Comprehensive Internship Management System (IMS) is a web-based application designed to streamline the internship management process for students, companies, and university staff. This system provides a centralized platform for managing internship applications, monitoring progress, and providing support through advanced technologies such as Natural Language Processing (NLP).
 
-#### 1.1 Purpose
+## Table of Contents
 
-The purpose of this Software Requirements Specification (SRS) document is to provide a detailed description of the Comprehensive Internship Management System (IMS). This document will outline the system's functionalities, features, and constraints to ensure a clear understanding of the system's requirements and expected performance.
+1. [Features](#features)
+2. [Technology Stack](#technology-stack)
+3. [Installation](#installation)
+4. [Usage](#usage)
+5. [API Endpoints](#api-endpoints)
+6. [Contributing](#contributing)
+7. [License](#license)
 
-#### 1.2 Scope
+## Features
 
-The IMS is designed to streamline the internship management process for students, companies, and university staff. The system will provide a centralized platform for managing internship applications, monitoring progress, and providing support through advanced technologies such as Natural Language Processing (NLP). The key features of the IMS include:
+- **Student Management**: Register, create, and manage student profiles.
+- **Internship Search and Application**: Advanced search engine for finding and applying for internships.
+- **Company Management**: Register companies and post internship opportunities.
+- **Application Tracking and Monitoring**: Track and monitor internship applications.
+- **Progress Reporting and Evaluation**: Submit progress reports and evaluations.
+- **Staff Support and System Administration**: Tools for managing the system and supporting users.
+- **GPS and Route Navigation**: Navigation tools for staff to locate and travel to internship sites.
+- **Attachy Assistant**: NLP-powered assistant to support users with queries and guidance.
 
-- Student registration and profile management
-- Internship search and application
-- Company registration and internship posting
-- Application tracking and management
-- Progress reporting and evaluation
-- Staff support and system administration
-- GPS and route navigation for staff
+## Technology Stack
 
-#### 1.3 Definitions, Acronyms, and Abbreviations
+### Backend
 
-- **IMS:** Internship Management System
-- **NLP:** Natural Language Processing
-- **Attachy:** NLP-powered assistant integrated into the IMS
-- **GPS:** Global Positioning System
+- **Framework**: FastAPI (Python)
+- **Database**: MongoDB
+- **Authentication**: JWT (JSON Web Tokens)
 
-#### 1.4 References
+### Frontend
 
-- Project Proposal Overview Document
-- Final Year Project - Chapter One Document
+- **Framework**: React.js
+- **State Management**: Redux
+- **UI Framework**: Material-UI
+- **API Client**: Axios
+- **Routing**: React Router
 
-#### 1.5 Overview
+## Installation
 
-This SRS document is organized into the following sections:
+### Prerequisites
 
-1. Introduction
-2. Overall Description
-3. System Features
-4. External Interface Requirements
-5. System Requirements
-6. Other Non-Functional Requirements
+- Python 3.8+
+- Node.js and npm
+- MongoDB
 
-### 2. Overall Description
+### Backend Setup
 
-#### 2.1 Product Perspective
+1. Clone the repository:
+    ```sh
+    git clone https://github.com/your-username/ims.git
+    cd ims/backend
+    ```
 
-The IMS will be a web-based application accessible through standard web browsers. It will integrate with existing university systems and databases to retrieve and store information. The system will use a modular architecture to ensure scalability and flexibility.
+2. Create a virtual environment and activate it:
+    ```sh
+    python -m venv venv
+    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+    ```
 
-#### 2.2 Product Functions
+3. Install dependencies:
+    ```sh
+    pip install -r requirements.txt
+    ```
 
-The IMS will provide the following core functions:
+4. Start the FastAPI server:
+    ```sh
+    uvicorn main:app --reload
+    ```
 
-- Student management
-- Internship search and application
-- Company management
-- Application tracking and monitoring
-- Progress reporting and evaluation
-- Staff support and system administration
-- GPS and route navigation for staff
+### Frontend Setup
 
-#### 2.3 User Classes and Characteristics
+1. Navigate to the frontend directory:
+    ```sh
+    cd ../frontend
+    ```
 
-- **Students:** Undergraduate and postgraduate students seeking internships.
-- **Companies:** Organizations offering internship opportunities.
-- **University Staff:** Internship coordinators, academic advisors, and administrative staff.
+2. Install dependencies:
+    ```sh
+    npm install
+    ```
 
-#### 2.4 Operating Environment
+3. Start the React development server:
+    ```sh
+    npm start
+    ```
 
-The IMS will operate in a web-based environment, accessible through modern web browsers on various devices, including desktops, laptops, tablets, and smartphones.
+## Usage
 
-#### 2.5 Design and Implementation Constraints
+Once both the backend and frontend servers are running, open your web browser and navigate to `http://localhost:3000` to access the IMS application.
 
-- Integration with existing university systems and databases
-- Compliance with data protection and privacy regulations
-- High availability and performance requirements
+## API Endpoints
 
-#### 2.6 User Documentation
+### User API
 
-User manuals, online help, and video tutorials will be provided to guide users in using the system.
+- **POST /api/users/register**: Register a new user.
+- **POST /api/users/login**: User login.
 
-#### 2.7 Assumptions and Dependencies
+### Student API
 
-- Users will have access to the internet and modern web browsers.
-- The university will provide necessary APIs for system integration.
+- **GET /api/students**: Get a list of students.
+- **POST /api/students**: Create a new student profile.
+- **PUT /api/students/{id}**: Update student profile.
+- **DELETE /api/students/{id}**: Delete student profile.
 
-### 3. System Features
+### Company API
 
-#### 3.1 Student Management
+- **GET /api/companies**: Get a list of companies.
+- **POST /api/companies**: Create a new company profile.
+- **PUT /api/companies/{id}**: Update company profile.
+- **DELETE /api/companies/{id}**: Delete company profile.
 
-**Description:** Allows students to register, create, and manage their profiles, including personal information, academic background, and resumes.
+### Internship API
 
-**Functional Requirements:**
+- **GET /api/internships**: Get a list of internships.
+- **POST /api/internships**: Post a new internship.
+- **PUT /api/internships/{id}**: Update internship details.
+- **DELETE /api/internships/{id}**: Delete internship.
 
-- Students can register and create profiles.
-- Students can update personal and academic information.
-- Students can upload and manage resumes and other documents.
+### Staff API
 
-#### 3.2 Internship Search and Application
+- **GET /api/staff**: Get a list of staff.
+- **POST /api/staff**: Add a new staff member.
+- **PUT /api/staff/{id}**: Update staff details.
+- **DELETE /api/staff/{id}**: Delete staff member.
 
-**Description:** Provides a search engine with advanced filtering options for students to find and apply for internships.
+### Attachy Assistant API
 
-**Functional Requirements:**
+- **POST /api/attachy/query**: Query the Attachy assistant.
 
-- Students can search for internships using various filters (e.g., location, industry, duration).
-- Students can view detailed internship descriptions.
-- Students can apply for internships directly through the platform.
-- Students can track the status of their applications.
+## Contributing
 
-#### 3.3 Company Management
+Contributions are welcome! Please follow these steps to contribute:
 
-**Description:** Allows companies to register, create profiles, and post internship opportunities.
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/your-feature-name`).
+3. Make your changes.
+4. Commit your changes (`git commit -m 'Add some feature'`).
+5. Push to the branch (`git push origin feature/your-feature-name`).
+6. Open a pull request.
 
-**Functional Requirements:**
+## License
 
-- Companies can register and create profiles.
-- Companies can post and manage internship opportunities.
-- Companies can view and manage student applications.
-- Companies can schedule and manage interviews with applicants.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-#### 3.4 Application Tracking and Monitoring
+---
 
-**Description:** Enables students, companies, and staff to track and monitor the status of internship applications.
-
-**Functional Requirements:**
-
-- Students can view the status of their applications.
-- Companies can update the status of student applications.
-- Staff can monitor the application process and provide support as needed.
-
-#### 3.5 Progress Reporting and Evaluation
-
-**Description:** Allows students and companies to track and report progress throughout the internship.
-
-**Functional Requirements:**
-
-- Students can submit progress reports.
-- Companies can provide feedback and evaluations.
-- Staff can generate and review progress reports.
-
-#### 3.6 Staff Support and System Administration
-
-**Description:** Provides tools for university staff to manage the system, support users, and oversee the internship process.
-
-**Functional Requirements:**
-
-- Staff can manage student and company profiles.
-- Staff can oversee internship postings and applications.
-- Staff can generate reports and analytics.
-- Staff can configure system settings and user access.
-
-#### 3.7 GPS and Route Navigation
-
-**Description:** Provides navigation tools for staff to locate and travel to internship sites.
-
-**Functional Requirements:**
-
-- Staff can view the location of internship sites.
-- Staff can use GPS and route navigation to travel to sites.
-- Staff can report or grade student performance on-site.
-
-#### 3.8 Attachy Assistant
-
-**Description:** Integrates an NLP-powered assistant to support users with queries and guidance.
-
-**Functional Requirements:**
-
-- Attachy can answer user queries using natural language processing.
-- Attachy can assist students with application processes and company selection.
-- Attachy can provide support and guidance to users.
-
-### 4. External Interface Requirements
-
-#### 4.1 User Interfaces
-
-- **Web Interface:** The IMS will provide a responsive web interface accessible through modern web browsers.
-
-#### 4.2 Hardware Interfaces
-
-- **Server Requirements:** The IMS will be hosted on servers meeting performance and scalability requirements.
-
-#### 4.3 Software Interfaces
-
-- **APIs:** Integration with university systems and databases will be facilitated through APIs.
-
-#### 4.4 Communications Interfaces
-
-- **Internet Connectivity:** Users will access the IMS through an internet connection.
-
-### 5. System Requirements
-
-#### 5.1 Functional Requirements
-
-- The system must allow users to register and manage profiles.
-- The system must provide a search engine for finding internships.
-- The system must enable application submission and tracking.
-- The system must support progress reporting and evaluation.
-- The system must offer GPS and route navigation for staff.
-- The system must integrate the Attachy assistant for user support.
-
-#### 5.2 Non-Functional Requirements
-
-- **Performance:** The system must handle high volumes of users and transactions efficiently.
-- **Scalability:** The system must be scalable to accommodate increasing numbers of users.
-- **Security:** The system must ensure data protection and privacy.
-- **Usability:** The system must provide an intuitive and user-friendly interface.
-
-### 6. Other Non-Functional Requirements
-
-#### 6.1 Security Requirements
-
-- The system must implement robust authentication and authorization mechanisms.
-- The system must encrypt sensitive data in transit and at rest.
-
-#### 6.2 Reliability Requirements
-
-- The system must ensure high availability and minimal downtime.
-- The system must include backup and disaster recovery mechanisms.
-
-#### 6.3 Maintainability Requirements
-
-- The system must be designed for ease of maintenance and updates.
-- The system must provide comprehensive logging and error reporting.
-
-#### 6.4 Portability Requirements
-
-- The system must be accessible on various devices, including desktops, laptops, tablets, and smartphones.
-
-### Conclusion
-
-This Software Requirements Specification (SRS) document outlines the functional and non-functional requirements of the Comprehensive Internship Management System (IMS). The detailed description of the system features and requirements will guide the development, implementation, and maintenance of the IMS to ensure it meets the needs of students, companies, and university staff.
-
-**Technology Stack:**
-
-- **Backend:** Python - FastAPI
-- **Database:** MongoDB
-- **Frontend:** React.js
