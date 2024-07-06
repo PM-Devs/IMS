@@ -37,7 +37,7 @@ The Comprehensive Internship Management System (IMS) is a web-based application 
 
 - **Framework**: React.js
 - **State Management**: Redux
-- **UI Framework**: Material-UI
+- **UI Framework**: Tailwindjs
 - **API Client**: Axios
 - **Routing**: React Router
 
