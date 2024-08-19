@@ -1,31 +1,22 @@
-# Database Design for Comprehensive Internship Management System (IMS)
-
+# Updated Database Design for Comprehensive Internship Management System (IMS)
+---
 ## Collections and Schemas
 
 ### 1. Users
 
 **Collection Name:** `users`
 
-**Schema:**
-
 ```json
 {
   "user_id": "ObjectId",
-  "role": "string",  // "student", "company", "staff"
+  "role": "string",  // "student", "company", "school_supervisor", "company_supervisor", "department_staff", "ilo_staff"
   "email": "string",
   "password": "string",
   "profile": {
     "name": "string",
     "contact_number": "string",
     "address": "string",
-    "additional_info": "string",
-    "documents": [
-      {
-        "document_id": "ObjectId",
-        "document_name": "string",
-        "document_url": "string"
-      }
-    ]
+    "additional_info": "string"
   },
   "created_at": "datetime",
   "updated_at": "datetime"
@@ -36,24 +27,27 @@
 
 **Collection Name:** `students`
 
-**Schema:**
-
 ```json
 {
   "student_id": "ObjectId",
   "user_id": "ObjectId",
-  "academic_background": {
-    "degree": "string",
+  "registration_number": "string",
+  "academic_info": {
+    "faculty": "string",
     "department": "string",
-    "year_of_study": "number",
-    "cgpa": "number"
+    "program": "string",
+    "year_of_study": "number"
   },
   "resume_url": "string",
-  "applied_internships": [
+  "internships": [
     {
       "internship_id": "ObjectId",
-      "application_status": "string",  // "applied", "in_progress", "completed", "rejected"
-      "application_date": "datetime"
+      "status": "string",  // "applied", "accepted", "in_progress", "completed"
+      "application_date": "datetime",
+      "start_date": "datetime",
+      "end_date": "datetime",
+      "company_supervisor_id": "ObjectId",
+      "school_supervisor_id": "ObjectId"
     }
   ],
   "created_at": "datetime",
@@ -65,8 +59,6 @@
 
 **Collection Name:** `companies`
 
-**Schema:**
-
 ```json
 {
   "company_id": "ObjectId",
@@ -74,17 +66,13 @@
   "company_name": "string",
   "industry": "string",
   "location": "string",
+  "postal_address": "string",
   "contact_person": {
     "name": "string",
     "email": "string",
     "phone": "string"
   },
-  "internships_posted": [
-    {
-      "internship_id": "ObjectId",
-      "posting_date": "datetime"
-    }
-  ],
+  "internships_posted": ["ObjectId"],
   "created_at": "datetime",
   "updated_at": "datetime"
 }
@@ -93,8 +81,6 @@
 ### 4. Internships
 
 **Collection Name:** `internships`
-
-**Schema:**
 
 ```json
 {
@@ -107,77 +93,188 @@
   "duration": "string",
   "requirements": "string",
   "application_deadline": "datetime",
-  "applications": [
-    {
-      "student_id": "ObjectId",
-      "status": "string",  // "applied", "in_progress", "completed", "rejected"
-      "application_date": "datetime",
-      "progress_reports": [
-        {
-          "report_id": "ObjectId",
-          "submission_date": "datetime",
-          "content": "string"
-        }
-      ],
-      "evaluations": [
-        {
-          "evaluation_id": "ObjectId",
-          "evaluation_date": "datetime",
-          "comments": "string",
-          "rating": "number"
-        }
-      ]
-    }
-  ],
+  "status": "string",  // "open", "closed", "in_progress", "completed"
   "created_at": "datetime",
   "updated_at": "datetime"
 }
 ```
 
-### 5. Staff
+### 5. Applications
 
-**Collection Name:** `staff`
-
-**Schema:**
+**Collection Name:** `applications`
 
 ```json
 {
-  "staff_id": "ObjectId",
-  "user_id": "ObjectId",
-  "role": "string",  // "coordinator", "advisor", "admin"
-  "assigned_internships": [
-    {
-      "internship_id": "ObjectId",
-      "assignment_date": "datetime"
-    }
-  ],
+  "application_id": "ObjectId",
+  "student_id": "ObjectId",
+  "internship_id": "ObjectId",
+  "status": "string",  // "applied", "accepted", "rejected", "in_progress", "completed"
+  "application_date": "datetime",
+  "acceptance_date": "datetime",
+  "start_date": "datetime",
+  "end_date": "datetime",
   "created_at": "datetime",
   "updated_at": "datetime"
 }
 ```
 
-### 6. Attachy Assistant Logs
+### 6. Daily Logs
 
-**Collection Name:** `attachy_logs`
-
-**Schema:**
+**Collection Name:** `daily_logs`
 
 ```json
 {
   "log_id": "ObjectId",
+  "student_id": "ObjectId",
+  "internship_id": "ObjectId",
+  "date": "datetime",
+  "activities": "string",
+  "status": "string",  // "draft", "submitted", "approved"
+  "supervisor_comments": "string",
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+### 7. Monthly Summaries
+
+**Collection Name:** `monthly_summaries`
+
+```json
+{
+  "summary_id": "ObjectId",
+  "student_id": "ObjectId",
+  "internship_id": "ObjectId",
+  "month": "number",
+  "year": "number",
+  "content": "string",
+  "status": "string",  // "draft", "submitted", "approved"
+  "supervisor_comments": "string",
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+### 8. Supervisors
+
+**Collection Name:** `supervisors`
+
+```json
+{
+  "supervisor_id": "ObjectId",
   "user_id": "ObjectId",
-  "query": "string",
-  "response": "string",
-  "timestamp": "datetime"
+  "type": "string",  // "school", "company"
+  "department": "string",  // for school supervisors
+  "company_id": "ObjectId",  // for company supervisors
+  "assigned_students": ["ObjectId"],
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+### 9. Evaluations
+
+**Collection Name:** `evaluations`
+
+```json
+{
+  "evaluation_id": "ObjectId",
+  "application_id": "ObjectId",
+  "supervisor_id": "ObjectId",
+  "evaluation_type": "string",  // "mid-term", "final"
+  "criteria": [
+    {
+      "name": "string",
+      "score": "number",
+      "max_score": "number",
+      "comments": "string"
+    }
+  ],
+  "total_score": "number",
+  "comments": "string",
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+### 10. Departments
+
+**Collection Name:** `departments`
+
+```json
+{
+  "department_id": "ObjectId",
+  "name": "string",
+  "faculty": "string",
+  "head_of_department": "ObjectId",  // reference to user_id
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+### 11. Industrial Liaison Office
+
+**Collection Name:** `industrial_liaison_office`
+
+```json
+{
+  "ilo_id": "ObjectId",
+  "staff": [
+    {
+      "user_id": "ObjectId",
+      "role": "string"  // "director", "admin", "officer"
+    }
+  ],
+  "grading_scales": [
+    {
+      "component": "string",
+      "weight": "number"
+    }
+  ],
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+### 12. GPS Logs
+
+**Collection Name:** `gps_logs`
+
+```json
+{
+  "log_id": "ObjectId",
+  "supervisor_id": "ObjectId",
+  "internship_id": "ObjectId",
+  "timestamp": "datetime",
+  "latitude": "number",
+  "longitude": "number",
+  "created_at": "datetime"
+}
+```
+
+### 13. Final Reports
+
+**Collection Name:** `final_reports`
+
+```json
+{
+  "report_id": "ObjectId",
+  "student_id": "ObjectId",
+  "internship_id": "ObjectId",
+  "report_url": "string",
+  "submission_date": "datetime",
+  "status": "string",  // "submitted", "under_review", "graded"
+  "department_grade": "number",
+  "comments": "string",
+  "created_at": "datetime",
+  "updated_at": "datetime"
 }
 ```
 
 ## Relationships
 
-1. **Users to Students/Companies/Staff:**
-   - One-to-One relationship between `users` and `students`.
-   - One-to-One relationship between `users` and `companies`.
-   - One-to-One relationship between `users` and `staff`.
+1. **Users to Students/Companies/Supervisors/Staff:**
+   - One-to-One relationship between `users` and `students`/`companies`/`supervisors`/`department_staff`/`ilo_staff`.
 
 2. **Companies to Internships:**
    - One-to-Many relationship between `companies` and `internships`.
@@ -185,14 +282,24 @@
 3. **Students to Internships:**
    - Many-to-Many relationship between `students` and `internships` through `applications`.
 
-4. **Staff to Internships:**
-   - Many-to-Many relationship between `staff` and `internships` through `assigned_internships`.
+4. **Supervisors to Students:**
+   - One-to-Many relationship between `supervisors` and `students`.
 
-5. **Internships to Applications:**
-   - One-to-Many relationship between `internships` and `applications` (embedded within `internships`).
+5. **Applications to Daily Logs and Monthly Summaries:**
+   - One-to-Many relationship between `applications` and `daily_logs`/`monthly_summaries`.
 
-6. **Internships to Progress Reports and Evaluations:**
-   - One-to-Many relationship between `applications` and `progress_reports` (embedded within `applications`).
-   - One-to-Many relationship between `applications` and `evaluations` (embedded within `applications`).
+6. **Applications to Evaluations:**
+   - One-to-Many relationship between `applications` and `evaluations`.
 
-This database design ensures efficient management of the IMS, supporting all required functionalities and maintaining data integrity and relationships.
+7. **Departments to Students and Supervisors:**
+   - One-to-Many relationship between `departments` and `students`/`supervisors`.
+
+8. **Industrial Liaison Office to All Entities:**
+   - One-to-Many relationship between `industrial_liaison_office` and all other entities for oversight.
+
+9. **Supervisors to GPS Logs:**
+   - One-to-Many relationship between `supervisors` and `gps_logs`.
+
+10. **Students to Final Reports:**
+    - One-to-One relationship between `students` and `final_reports` for each internship.
+
