@@ -1,0 +1,774 @@
+from pydantic import BaseModel, Field, EmailStr, HttpUrl
+from typing import List, Optional, Dict
+from datetime import datetime
+from bson import ObjectId
+
+class PyObjectId(ObjectId):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not ObjectId.is_valid(v):
+            raise ValueError("Invalid ObjectId")
+        return ObjectId(v)
+
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.update(type="string")
+
+def objectid_to_str(v: ObjectId) -> str:
+    return str(v)
+
+class Address(BaseModel):
+    street: str
+    city: str
+    state: str
+    country: str
+    postal_code: str
+    latitude: Optional[float]
+    longitude: Optional[float]
+
+class ContactInfo(BaseModel):
+    phone: str
+    alternative_phone: Optional[str]
+    email: EmailStr
+    alternative_email: Optional[EmailStr]
+
+class User(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    role: str
+    email: EmailStr
+    password: str
+    first_name: str
+    last_name: str
+    profile_picture: Optional[HttpUrl]
+    contact_info: ContactInfo
+    address: Address
+    date_of_birth: datetime
+    gender: str
+    nationality: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class AcademicInfo(BaseModel):
+    institution: str
+    degree: str
+    major: str
+    year_of_study: int
+    gpa: float
+
+class Student(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    user_id: PyObjectId
+    registration_number: str
+    academic_info: AcademicInfo
+    resume_url: Optional[HttpUrl]
+    skills: List[str] = []
+    interests: List[str] = []
+    internships: List[Dict] = []
+    projects: List[Dict] = []
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class Company(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    user_id: PyObjectId
+    company_name: str
+    industry: str
+    company_size: str
+    year_founded: int
+    website: HttpUrl
+    logo_url: Optional[HttpUrl]
+    description: str
+    address: Address
+    contact_info: ContactInfo
+    internships_posted: List[PyObjectId] = []
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class Internship(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    company_id: PyObjectId
+    title: str
+    description: str
+    responsibilities: List[str]
+    requirements: List[str]
+    location: Address
+    industry: str
+    internship_type: str  # e.g., "full-time", "part-time", "remote"
+    duration: str
+    start_date: datetime
+    end_date: datetime
+    stipend: Optional[float]
+    application_deadline: datetime
+    max_applications: int
+    status: str  # e.g., "open", "closed", "filled"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class Application(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    student_id: PyObjectId
+    internship_id: PyObjectId
+    status: str  # e.g., "pending", "accepted", "rejected", "withdrawn"
+    application_date: datetime
+    cover_letter: str
+    resume_url: HttpUrl
+    acceptance_date: Optional[datetime]
+    rejection_date: Optional[datetime]
+    withdrawal_date: Optional[datetime]
+    start_date: Optional[datetime]
+    end_date: Optional[datetime]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class Supervisor(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    user_id: PyObjectId
+    type: str  # "school-based" or "company-based"
+    department: Optional[str]
+    position: str
+    company_id: Optional[PyObjectId]
+    assigned_students: List[PyObjectId] = []
+    qualifications: List[str] = []
+    areas_of_expertise: List[str] = []
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class EvaluationCriteria(BaseModel):
+    criterion: str
+    score: float
+    max_score: float
+    weight: float
+
+class Evaluation(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    application_id: PyObjectId
+    supervisor_id: PyObjectId
+    evaluation_type: str  # e.g., "mid-term", "final"
+    evaluation_date: datetime
+    criteria: List[EvaluationCriteria]
+    total_score: float
+    max_total_score: float
+    comments: Optional[str]
+    strengths: List[str] = []
+    areas_for_improvement: List[str] = []
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class Notification(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    user_id: PyObjectId
+    title: str
+    description: str
+    notification_type: str  # e.g., "info", "warning", "alert"
+    picture_url: Optional[HttpUrl]
+    link: Optional[HttpUrl]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    read: bool = False
+    read_at: Optional[datetime]
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class VisitLocation(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    supervisor_id: PyObjectId
+    student_id: PyObjectId
+    internship_id: PyObjectId
+    company_id: PyObjectId
+    source_location: Address
+    destination_location: Address
+    visit_date: datetime
+    status: str  # e.g., "planned", "completed", "cancelled"
+    notes: Optional[str]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class AppCredentials(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    app_id: str
+    app_key: str
+    app_name: str
+    description: str
+    created_by: PyObjectId
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    last_used: Optional[datetime]
+    is_active: bool = True
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class DailyLog(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    student_id: PyObjectId
+    internship_id: PyObjectId
+    date: datetime
+    activities: List[str]
+    learning_outcomes: List[str]
+    challenges: Optional[str]
+    hours_worked: float
+    status: str  # e.g., "submitted", "approved", "needs_revision"
+    supervisor_comments: Optional[str]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class WeeklyReport(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    student_id: PyObjectId
+    internship_id: PyObjectId
+    week_start_date: datetime
+    week_end_date: datetime
+    summary: str
+    key_learnings: List[str]
+    challenges: Optional[str]
+    goals_for_next_week: List[str]
+    status: str  # e.g., "submitted", "approved", "needs_revision"
+    supervisor_comments: Optional[str]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+
+class FinalReport(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    student_id: PyObjectId
+    internship_id: PyObjectId
+    submission_date: datetime
+    report_url: HttpUrl
+    executive_summary: str
+    learnings: List[str]
+    challenges: List[str]
+    recommendations: List[str]
+    status: str  # e.g., "submitted", "under_review", "approved", "needs_revision"
+    supervisor_comments: Optional[str]
+    grade: Optional[float]
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: objectid_to_str}
+base on the models:
+Base on the requirements, we will be doing 5 different systems, that utilize the same database.. first  of all desing the models for the databse better then proceed ..for now, i am focusing on the school based supervisor: i want to build a full python fastapi app for the School based supervisor... with all the following fufilled: 1. Security must be 3 layers: 1. Appliaction Key authentication to athenticate the app... 2. 0ath2 for user access token generation and management, do not return user data, but return s simple access token, which encrypts or encodes users data... 3. Role base access contoel, if user is not Role: Supervisor reject all request.... The company based suppersvisor managemes all things about the company.. it is different from the schpool based supervisor.. 2. /Dashbaod page: this contains a lot of data to be presented to the student, my task is to do the backend, the frontend is done... it should feedd the following data : 1. The Location a Supervsior is Assigneg or Posted... 2. Total Student He is supposed to supervised 3. Number of student, the supervuisor has complted supervisiong 4. Number of stuendt left to supervised.. 5. Searchh therough the students by name, phone number, or Location 6. List of all students assigned to the supervisor with thier profiel details, such as Name, company student is at, student pic ture, etc... all data of student, landmark, location student is doing intention, .. 7. Notification : Name, Description, picturen, this is posted by the laison poffice/.. 3. /Student page: This page is to show the following : 1. list of all students by profile details assigned to the supervisor. 2. List of all students supervisor has completed supervising 3. List of all students pedning supervision 4. / vsist Location: 1. List of all students pending supervision
+1. Get Directions: get the source and Destion of the directiosn: that is the cureent location of lecture and the location of student to be vsisited he has selected. can perform CRUD operations
+2. assestment : 1. list of all student to be accessed 
+Asscessment : Fields -SN,criterial , score
+   * short message or remarks , 2. accessment instructions
+3. /settings: get the profiel of the supervisor and the CRUD for it 
+4. Supoort/ : this is like faq for supervisor with chatbot included.. the chatBot should sit on top of the database . and answers questions..
+for the FastApI : 1. main.py 2. services.py 3. middlwares/ log.py , auth.py , requestValidity.py from fastapi import FastAPI, Depends, HTTPException, status, Query from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm from jose import JWTError, jwt from passlib.context import CryptContext from pydantic import BaseModel from typing import List, Optional from datetime import datetime, timedelta from bson import ObjectId from motor.motor_asyncio import AsyncIOMotorClient # Import the models we created earlier from models import User, Student, Supervisor, Evaluation, Notification, VisitLocation, AppCredentials, DailyLog, WeeklyReport, FinalReport app = FastAPI() # Database connection DATABASE_URL = "mongodb://localhost:27017" client = AsyncIOMotorClient(DATABASE_URL) db = client.internship_management_system # Security settings SECRET_KEY = "your-secret-key" ALGORITHM = "HS256" ACCESS_TOKEN_EXPIRE_MINUTES = 30 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") # Application key authentication async def verify_app_key(app_id: str, app_key: str): app_cred = await db.app_credentials.find_one({"app_id": app_id}) if not app_cred or app_cred["app_key"] != app_key: raise HTTPException(status_code=400, detail="Invalid application credentials") await db.app_credentials.update_one( {"_id": app_cred["_id"]}, {"$set": {"last_used": datetime.utcnow()}} ) # User authentication def verify_password(plain_password, hashed_password): return pwd_context.verify(plain_password, hashed_password) async def get_user(email: str): user = await db.users.find_one({"email": email}) if user: return User(**user) async def authenticate_user(email: str, password: str): user = await get_user(email) if not user or not verify_password(password, user.password): return False return user def create_access_token(data: dict, expires_delta: Optional[timedelta] = None): to_encode = data.copy() if expires_delta: expire = datetime.utcnow() + expires_delta else: expire = datetime.utcnow() + timedelta(minutes=15) to_encode.update({"exp": expire}) encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM) return encoded_jwt async def get_current_user(token: str = Depends(oauth2_scheme)): credentials_exception = HTTPException( status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"}, ) try: payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM]) email: str = payload.get("sub") if email is None: raise credentials_exception except JWTError: raise credentials_exception user = await get_user(email) if user is None: raise credentials_exception
+# Software Requirements Specification (SRS)
+---
+## Comprehensive Internship Management System (IMS)
+
+### 1. Introduction
+
+#### 1.1 Purpose
+
+The purpose of this Software Requirements Specification (SRS) document is to provide a detailed description of the Comprehensive Internship Management System (IMS). This document outlines the system's functionalities, features, and constraints to ensure a clear understanding of the system's requirements and expected performance.
+
+#### 1.2 Scope
+
+The IMS is designed to streamline the internship management process for students, companies, university staff, and the Industrial Liaison Office. The system provides a centralized platform for managing internship applications, monitoring progress, and facilitating support through advanced technologies. The key features of the IMS include:
+
+- Student registration and profile management
+- Internship search, application, and placement
+- Company registration and internship posting
+- Application tracking and management
+- Progress reporting and evaluation
+- Supervision management (school-based and company-based)
+- Department evaluation
+- Industrial Liaison Office oversight
+- Staff support and system administration
+- GPS and route navigation for staff
+
+#### 1.3 Definitions, Acronyms, and Abbreviations
+
+- **IMS:** Internship Management System
+- **NLP:** Natural Language Processing
+- **Attachy:** NLP-powered assistant integrated into the IMS
+- **GPS:** Global Positioning System
+- **ILO:** Industrial Liaison Office
+
+#### 1.4 References
+
+- Project Proposal Overview Document
+- Final Year Project - Chapter One Document
+- Industrial Attachment Forms and Guidelines
+
+#### 1.5 Overview
+
+This SRS document is organized into the following sections:
+
+1. Introduction
+2. Overall Description
+3. System Features
+4. External Interface Requirements
+5. System Requirements
+6. Other Non-Functional Requirements
+
+### 2. Overall Description
+
+#### 2.1 Product Perspective
+
+The IMS will be a web-based application accessible through standard web browsers. It will integrate with existing university systems and databases to retrieve and store information. The system will use a modular architecture to ensure scalability and flexibility.
+
+#### 2.2 Product Functions
+
+The IMS will provide the following core functions:
+
+- Student management and internship application
+- Company management and internship posting
+- Application tracking and monitoring
+- Progress reporting and evaluation
+- Supervision management (school-based and company-based)
+- Department evaluation
+- Industrial Liaison Office oversight
+- Staff support and system administration
+- GPS and route navigation for staff
+
+#### 2.3 User Classes and Characteristics
+
+- **Students:** Undergraduate and postgraduate students seeking internships.
+- **Companies:** Organizations offering internship opportunities.
+- **Company-based Supervisors:** Employees of the company overseeing student internships.
+- **School-based Supervisors:** University staff assigned to supervise students during internships.
+- **Departments:** Academic departments responsible for evaluating student reports.
+- **Industrial Liaison Office:** University department overseeing all internship activities.
+
+#### 2.4 Operating Environment
+
+The IMS will operate in a web-based environment, accessible through modern web browsers on various devices, including desktops, laptops, tablets, and smartphones.
+
+#### 2.5 Design and Implementation Constraints
+
+- Integration with existing university systems and databases
+- Compliance with data protection and privacy regulations
+- High availability and performance requirements
+- Mobile-friendly interface for supervisors using GPS navigation
+
+#### 2.6 User Documentation
+
+User manuals, online help, and video tutorials will be provided to guide users in using the system. Specific documentation will be created for each user class.
+
+#### 2.7 Assumptions and Dependencies
+
+- Users will have access to the internet and modern web browsers.
+- The university will provide necessary APIs for system integration.
+- Companies will cooperate in providing accurate information and timely evaluations.
+
+### 3. System Features
+
+#### 3.1 Student Management
+
+**Description:** Allows students to register, create, and manage their profiles, apply for internships, and manage their internship activities.
+
+**Functional Requirements:**
+
+- Students can log in to the system using credentials provided by the school.
+- Students can update personal and academic information.
+- Students can upload and manage resumes and other documents.
+- Students can view a list of available companies seeking interns.
+- Students can search for internships using various filters (e.g., location, industry, duration).
+- Students can apply for internships directly through the platform.
+- Students can track the status of their applications.
+- Students can fill out an "Assumption of Duty" form on the first day of internship.
+- Students can fill in daily activity logs.
+- Students can edit their daily logs until supervised by their assigned supervisor.
+- Students can submit monthly work experience summaries.
+- Students can view their logbook results after supervision.
+- Students can submit final attachment reports through the platform.
+
+#### 3.2 Company Management
+
+**Description:** Allows companies to register, create profiles, post internship opportunities, and manage interns.
+
+**Functional Requirements:**
+
+- Companies can register and create profiles.
+- Companies can post and manage internship opportunities.
+- Companies can view and manage student applications.
+- Companies can schedule and manage interviews with applicants.
+- Companies can designate a company-based supervisor for each intern.
+- Company-based supervisors can view and comment on students' weekly activities.
+- Company-based supervisors can endorse students' login books weekly.
+- Company-based supervisors can write final comments and grade students at the end of the internship.
+
+#### 3.3 Supervision Management
+
+**Description:** Manages the assignment and activities of school-based and company-based supervisors.
+
+**Functional Requirements:**
+
+- The system assigns school-based supervisors to students based on department and geographic location.
+- School-based supervisors can view assigned students' locations and use GPS for navigation.
+- School-based supervisors can view students' daily logs and activities.
+- School-based supervisors can mark logbooks, endorse them, and provide comments.
+- School-based supervisors can grade students' performance using a standardized form.
+- The system balances supervisor workload based on student distribution and location.
+- Supervisors can generate and submit evaluation reports.
+
+#### 3.4 Department Management
+
+**Description:** Allows academic departments to evaluate student reports and provide final grades.
+
+**Functional Requirements:**
+
+- Departments can access and grade students' final attachment reports.
+- Departments can view supervisor evaluations and logbook grades.
+- The system calculates final grades based on logbook marks and report grades according to scales set by the Industrial Liaison Office.
+- Departments can generate performance reports for their students.
+
+#### 3.5 Industrial Liaison Office Management
+
+**Description:** Provides overall system management and oversight capabilities for the Industrial Liaison Office.
+
+**Functional Requirements:**
+
+- The ILO can manage and oversee all system operations.
+- Administrators can alter any data in the system.
+- The office can finalize all operations and halt processes when necessary.
+- The system supports different roles within the office (directors, admins, officers, etc.).
+- The ILO can set and adjust grading scales and evaluation criteria.
+- The ILO can generate comprehensive reports on internship programs.
+
+#### 3.6 Application Tracking and Monitoring
+
+**Description:** Enables all stakeholders to track and monitor the status of internship applications and placements.
+
+**Functional Requirements:**
+
+- Students can view the status of their applications.
+- Companies can update the status of student applications.
+- The ILO can monitor the application process and provide support as needed.
+- The system generates notifications for status changes and upcoming deadlines.
+
+#### 3.7 Progress Reporting and Evaluation
+
+**Description:** Facilitates the reporting and evaluation of student progress throughout the internship.
+
+**Functional Requirements:**
+
+- Students can submit daily logs and monthly summaries.
+- Company-based supervisors can provide weekly endorsements and feedback.
+- School-based supervisors can evaluate student performance during site visits.
+- The system calculates and combines scores from various evaluation components.
+- Stakeholders can view progress reports and evaluations according to their roles.
+
+#### 3.8 Staff Support and System Administration
+
+**Description:** Provides tools for university staff to manage the system, support users, and oversee the internship process.
+
+**Functional Requirements:**
+
+- Staff can manage student, company, and supervisor profiles.
+- Staff can oversee internship postings and applications.
+- Staff can generate reports and analytics.
+- Staff can configure system settings and user access.
+- The system provides a help desk function for user support.
+
+#### 3.9 GPS and Route Navigation
+
+**Description:** Provides navigation tools for school-based supervisors to locate and travel to internship sites.
+
+**Functional Requirements:**
+
+- School-based supervisors can view the location of internship sites on a map.
+- The system provides optimal routes for supervisors to visit multiple sites.
+- Supervisors can use GPS navigation to travel to sites.
+- The system tracks and logs supervisor visits for reporting purposes.
+
+### 4. External Interface Requirements
+
+#### 4.1 User Interfaces
+
+- **Web Interface:** The IMS will provide a responsive web interface accessible through modern web browsers.
+- **Mobile Interface:** A mobile-friendly interface will be provided for supervisors using GPS navigation.
+
+#### 4.2 Hardware Interfaces
+
+- **Server Requirements:** The IMS will be hosted on servers meeting performance and scalability requirements.
+- **GPS Integration:** The system will interface with mobile device GPS for navigation features.
+
+#### 4.3 Software Interfaces
+
+- **University Systems:** Integration with existing university systems and databases will be facilitated through APIs.
+- **Mapping Services:** Integration with mapping services for GPS and route navigation features.
+
+#### 4.4 Communications Interfaces
+
+- **Internet Connectivity:** Users will access the IMS through an internet connection.
+- **Email Integration:** The system will send notifications and alerts via email.
+
+### 5. System Requirements
+
+#### 5.1 Functional Requirements
+
+- The system must implement all features described in Section 3: System Features.
+- The system must support the complete workflow for student application, placement, supervision, and evaluation.
+- The system must implement all forms as described, including the Organization Profile, Industrial Attachment Orientation Form, and Supervisor Assessment Form.
+- The system must calculate and combine scores from logbooks, supervisor assessments, and final reports according to the Industrial Liaison Office's scaling system.
+- The system must provide role-based access control for all user types.
+- The system must generate appropriate notifications and alerts for all stakeholders.
+
+#### 5.2 Non-Functional Requirements
+
+- **Performance:** The system must handle high volumes of users and transactions efficiently.
+- **Scalability:** The system must be scalable to accommodate increasing numbers of users and data.
+- **Security:** The system must ensure data protection and privacy, implementing robust authentication and authorization mechanisms.
+- **Usability:** The system must provide an intuitive and user-friendly interface for all user types.
+- **Reliability:** The system must ensure high availability and minimal downtime.
+- **Maintainability:** The system must be designed for ease of maintenance and updates.
+
+### 6. Other Non-Functional Requirements
+
+#### 6.1 Security Requirements
+
+- The system must implement robust authentication and authorization mechanisms.
+- The system must encrypt sensitive data in transit and at rest.
+- The system must maintain an audit trail of all significant actions.
+
+#### 6.2 Reliability Requirements
+
+- The system must ensure high availability with an uptime of at least 99.9%.
+- The system must include backup and disaster recovery mechanisms.
+
+#### 6.3 Maintainability Requirements
+
+- The system must be designed with a modular architecture to facilitate updates and expansions.
+- The system must provide comprehensive logging and error reporting.
+
+#### 6.4 Portability Requirements
+
+- The system must be accessible on various devices, including desktops, laptops, tablets, and smartphones.
+- The system must support major web browsers (Chrome, Firefox, Safari, Edge).
+
+### Conclusion
+
+This comprehensive Software Requirements Specification (SRS) document outlines the detailed functional and non-functional requirements of the Internship Management System (IMS). The system is designed to meet the needs of all stakeholders involved in the internship process, including students, companies, supervisors, departments, and the Industrial Liaison Office. By implementing these requirements, the IMS will streamline the internship management process, enhance communication between stakeholders, and provide valuable insights through reporting and analytics.
+This is only for the backend.. and dont add frontend... also, for now, write services.py:
+from bson import ObjectId
+from fastapi import HTTPException
+from pymongo.errors import PyMongoError
+from typing import List, Dict
+from datetime import datetime
+
+class SupervisorService:
+    def __init__(self, db):
+        self.db = db
+
+    async def get_supervisor_dashboard(self, supervisor_id: str) -> Dict:
+        try:
+            supervisor = await self.db.supervisors.find_one({"_id": ObjectId(supervisor_id)})
+            if not supervisor:
+                raise HTTPException(status_code=404, detail="Supervisor not found")
+
+            total_students = len(supervisor["assigned_students"])
+            completed_supervisions = await self.db.evaluations.count_documents({
+                "supervisor_id": ObjectId(supervisor_id),
+                "status": "completed"
+            })
+            pending_supervisions = total_students - completed_supervisions
+
+            return {
+                "location": supervisor.get("location", "Not specified"),
+                "total_students": total_students,
+                "completed_supervisions": completed_supervisions,
+                "pending_supervisions": pending_supervisions
+            }
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def search_students(self, supervisor_id: str, query: str) -> List[Dict]:
+        try:
+            supervisor = await self.db.supervisors.find_one({"_id": ObjectId(supervisor_id)})
+            if not supervisor:
+                raise HTTPException(status_code=404, detail="Supervisor not found")
+
+            student_ids = [ObjectId(id) for id in supervisor["assigned_students"]]
+            students = await self.db.students.find({
+                "_id": {"$in": student_ids},
+                "$or": [
+                    {"first_name": {"$regex": query, "$options": "i"}},
+                    {"last_name": {"$regex": query, "$options": "i"}},
+                    {"contact_info.phone": {"$regex": query, "$options": "i"}},
+                    {"address.city": {"$regex": query, "$options": "i"}},
+                    {"address.state": {"$regex": query, "$options": "i"}}
+                ]
+            }).to_list(None)
+
+            return students
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def get_assigned_students(self, supervisor_id: str) -> List[Dict]:
+        try:
+            supervisor = await self.db.supervisors.find_one({"_id": ObjectId(supervisor_id)})
+            if not supervisor:
+                raise HTTPException(status_code=404, detail="Supervisor not found")
+
+            student_ids = [ObjectId(id) for id in supervisor["assigned_students"]]
+            students = await self.db.students.find({"_id": {"$in": student_ids}}).to_list(None)
+
+            # Fetch additional details for each student
+            for student in students:
+                internship = await self.db.internships.find_one({"student_id": student["_id"]})
+                if internship:
+                    company = await self.db.companies.find_one({"_id": internship["company_id"]})
+                    student["company"] = company["company_name"] if company else "Not specified"
+                    student["internship_location"] = internship.get("location", "Not specified")
+                else:
+                    student["company"] = "Not assigned"
+                    student["internship_location"] = "Not assigned"
+
+            return students
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def get_notifications(self, supervisor_id: str) -> List[Dict]:
+        try:
+            notifications = await self.db.notifications.find({
+                "user_id": ObjectId(supervisor_id),
+                "read": False
+            }).sort("created_at", -1).to_list(None)
+
+            return notifications
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def get_visit_locations(self, supervisor_id: str) -> List[Dict]:
+        try:
+            visit_locations = await self.db.visit_locations.find({
+                "supervisor_id": ObjectId(supervisor_id),
+                "status": "pending"
+            }).to_list(None)
+
+            return visit_locations
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def create_visit_location(self, supervisor_id: str, visit_data: Dict) -> Dict:
+        try:
+            visit_data["supervisor_id"] = ObjectId(supervisor_id)
+            visit_data["created_at"] = datetime.utcnow()
+            visit_data["updated_at"] = datetime.utcnow()
+            visit_data["status"] = "pending"
+
+            result = await self.db.visit_locations.insert_one(visit_data)
+            if result.inserted_id:
+                return {"id": str(result.inserted_id), **visit_data}
+            else:
+                raise HTTPException(status_code=500, detail="Failed to create visit location")
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def get_assessment_criteria(self) -> List[Dict]:
+        try:
+            criteria = await self.db.assessment_criteria.find().to_list(None)
+            return criteria
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def submit_assessment(self, supervisor_id: str, assessment_data: Dict) -> Dict:
+        try:
+            assessment_data["supervisor_id"] = ObjectId(supervisor_id)
+            assessment_data["created_at"] = datetime.utcnow()
+            assessment_data["updated_at"] = datetime.utcnow()
+
+            result = await self.db.assessments.insert_one(assessment_data)
+            if result.inserted_id:
+                return {"id": str(result.inserted_id), **assessment_data}
+            else:
+                raise HTTPException(status_code=500, detail="Failed to submit assessment")
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def get_supervisor_profile(self, supervisor_id: str) -> Dict:
+        try:
+            supervisor = await self.db.supervisors.find_one({"_id": ObjectId(supervisor_id)})
+            if not supervisor:
+                raise HTTPException(status_code=404, detail="Supervisor not found")
+
+            return supervisor
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def update_supervisor_profile(self, supervisor_id: str, profile_data: Dict) -> Dict:
+        try:
+            profile_data["updated_at"] = datetime.utcnow()
+            result = await self.db.supervisors.update_one(
+                {"_id": ObjectId(supervisor_id)},
+                {"$set": profile_data}
+            )
+            if result.modified_count:
+                updated_profile = await self.db.supervisors.find_one({"_id": ObjectId(supervisor_id)})
+                return updated_profile
+            else:
+                raise HTTPException(status_code=404, detail="Supervisor not found or no changes made")
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    async def get_faq(self) -> List[Dict]:
+        try:
+            faq = await self.db.faq.find().to_list(None)
+            return faq
+        except PyMongoError as e:
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+            

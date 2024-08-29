@@ -1,0 +1,158 @@
+# Setting Up Your Environment
+
+1. Ensure you have Python 3.7+ installed on your system.
+
+2. Create a new directory for your project and navigate to it:
+   ```
+   mkdir internship-management-system
+   cd internship-management-system
+   ```
+
+3. Create a virtual environment:
+   ```
+   python -m venv venv
+   ```
+
+4. Activate the virtual environment:
+   - On Windows:
+     ```
+     venv\Scripts\activate
+     ```
+   - On macOS and Linux:
+     ```
+     source venv/bin/activate
+     ```
+
+5. Install the required packages:
+   ```
+   pip install fastapi uvicorn python-jose[cryptography] passlib[bcrypt] python-multipart
+   ```
+
+6. Create the necessary directories and files:
+   ```
+   mkdir API Data Services
+   touch main.py API/__init__.py Data/__init__.py Services/__init__.py
+   ```
+
+7. Copy the code for each file (main.py, middlewares, API files, etc.) into their respective locations in your project directory.
+
+8. Ensure you have a MongoDB instance running. If you're using a cloud-hosted MongoDB, make sure you have the connection string.
+
+9. Update the database connection settings in your `main.py` or wherever you've defined your database connection.
+
+10. If you're using environment variables for sensitive information (like database credentials or JWT secret key), set these up in a `.env` file or in your system environment.
+
+
+
+
+
+To run the code for this FastAPI-based Internship Management System, you'll need to set up your environment and then start the FastAPI server. Here's a step-by-step guide on how to run the code:
+
+1. Set up your environment:
+
+
+
+
+
+# Setting Up Your Environment
+
+1. Ensure you have Python 3.7+ installed on your system.
+
+2. Create a new directory for your project and navigate to it:
+   ```
+   mkdir internship-management-system
+   cd internship-management-system
+   ```
+
+3. Create a virtual environment:
+   ```
+   python -m venv venv
+   ```
+
+4. Activate the virtual environment:
+   - On Windows:
+     ```
+     venv\Scripts\activate
+     ```
+   - On macOS and Linux:
+     ```
+     source venv/bin/activate
+     ```
+
+5. Install the required packages:
+   ```
+   pip install fastapi uvicorn python-jose[cryptography] passlib[bcrypt] python-multipart
+   ```
+
+6. Create the necessary directories and files:
+   ```
+   mkdir API Data Services
+   touch main.py API/__init__.py Data/__init__.py Services/__init__.py
+   ```
+
+7. Copy the code for each file (main.py, middlewares, API files, etc.) into their respective locations in your project directory.
+
+8. Ensure you have a MongoDB instance running. If you're using a cloud-hosted MongoDB, make sure you have the connection string.
+
+9. Update the database connection settings in your `main.py` or wherever you've defined your database connection.
+
+10. If you're using environment variables for sensitive information (like database credentials or JWT secret key), set these up in a `.env` file or in your system environment.
+
+
+2. Start the FastAPI server:
+
+Once you've set up your environment and project structure, you can start the FastAPI server. Here's how:
+
+
+
+Run the following command in your terminal, making sure you're in the project root directory and your virtual environment is activated:
+
+```
+uvicorn main:app --reload
+```
+
+This command does the following:
+- `uvicorn` is the ASGI server we're using to run our FastAPI application
+- `main:app` tells uvicorn to look for the `app` object in `main.py`
+- `--reload` enables auto-reloading, so the server will restart whenever you make changes to your code (useful for development)
+
+3. Access the API:
+
+Once the server is running, you should see output indicating that the server is running, typically on `http://127.0.0.1:8000`.
+
+You can now access your API:
+- The API documentation will be available at `http://127.0.0.1:8000/docs`
+- You can make requests to your API endpoints, e.g., `http://127.0.0.1:8000/api/users`
+
+Remember that most endpoints will require authentication, so you'll need to:
+1. Create an AppCredential (if you haven't already)
+2. Include the App_Id and App_Key in your request headers
+3. Obtain a JWT token by logging in
+4. Include the JWT token in the Authorization header for subsequent requests
+
+4. Testing:
+
+
+
+```bash
+# First, get a token
+curl -X POST "http://localhost:8000/api/users/token" \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -H "X-App-ID: your_app_id" \
+     -H "X-App-Key: your_app_key" \
+     -d "username=your_username&password=your_password"
+
+# Then use the token to make an authenticated request
+curl -X GET "http://localhost:8000/api/users" \
+     -H "Authorization: Bearer your_access_token" \
+     -H "X-App-ID: your_app_id" \
+     -H "X-App-Key: your_app_key"
+
+```
+
+Replace `your_app_id`, `your_app_key`, `your_username`, `your_password`, and `your_access_token` with actual values.
+
+Remember to handle any errors that may occur, especially during the initial setup and first run. You might need to debug and adjust your code or configuration based on any error messages you encounter.
+
+
+
