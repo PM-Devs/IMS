@@ -44,12 +44,12 @@ async def authenticate_user(email: str, password: str):
         return False
     return user
 
-def create_access_token(data: dict):
+def create_access_token(data: dict, scopes: str = "R-WR-R-R"):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "scope": scopes})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return Token(access_token=encoded_jwt, token_type="bearer", expires_at=expire)
+    return Token(access_token=encoded_jwt, token_type="bearer", expires_at=expire, scope=scopes)
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(

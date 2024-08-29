@@ -15,7 +15,7 @@ from middleware.log import log_middleware
 from middleware.auth import auth_middleware
 from middleware.requestValidity import request_validity_middleware
 from database.config import get_database
-
+from pydantic import BaseModel
 app = FastAPI()
 
 # Add CORS middleware
@@ -32,17 +32,53 @@ app.middleware("http")(log_middleware)
 app.middleware("http")(auth_middleware)
 app.middleware("http")(request_validity_middleware)
 
+
+
+
+class CustomLoginRequest(BaseModel):
+    grant_type: str
+    username: str
+    password: str
+    scope: str = None
+def get_scope(self):
+        # Default to "R-WR-R-R" if no scope provided
+        """function and set specific permissions for the supervisor role, you can modify the function to accept a scopes parameter. In this case, the scope "R-WR-R-R" will indicate:
+
+    First Column (R) symbolizes Student: Supervisor can only read student information.
+    Second Column (WR) symbolizes Supervisor: Supervisor can write and read supervisor information.
+    Third Column (R) symbolizes Company: Supervisor can only read company data.
+    Fourth Column (R) symbolizes Department: Supervisor can read department data."""
+        return self.scope or "R-WR-R-R"
+
 @app.post("/login", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login_for_access_token(request: CustomLoginRequest):
+    if request.grant_type != "password":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid grant_type. Expected 'password'."
+        )
+    
+    # Default scope for supervisors or use provided one
+    scopes = request.get_scope()
+
+    # Authenticating user
     async with get_database() as db:
-        user = await authenticate_user(db, form_data.username, form_data.password)
+        user = await authenticate_user(db, request.username, request.password)
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        return create_access_token(data={"sub": user.email})
+        
+        # Check and adjust scopes based on user role if needed
+        # Assuming 'R-WR-R-R' is for supervisors
+        if not scopes:  # If no scope is provided
+            scopes = "R-WR-R-R"  # Default scope for supervisors
+        
+        # Generate access token with scope
+        return create_access_token(data={"sub": user.email}, scopes=scopes)
+
 
 @app.post("/logout")
 async def logout_user(current_user: User = Depends(get_current_active_supervisor)):

@@ -1,7 +1,6 @@
 
 # middleware/requestValidity.py
 from fastapi import Request, HTTPException
-import re
 
 async def request_validity_middleware(request: Request, call_next):
     content_type = request.headers.get("Content-Type")
@@ -13,6 +12,5 @@ async def request_validity_middleware(request: Request, call_next):
         if len(body) > 1_000_000:  # 1 MB limit
             raise HTTPException(status_code=413, detail="Request body too large")
     
-
     response = await call_next(request)
     return response
