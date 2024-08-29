@@ -1,158 +1,125 @@
-# Setting Up Your Environment
+Here’s an explanation of each model and its role in the system:
 
-1. Ensure you have Python 3.7+ installed on your system.
+### **1. AttachmentReport**
+- **Role**: This model represents the final report submitted by a student at the end of their attachment period. It is used by the department to assess and grade the student’s performance during the internship.
+- **Fields**:
+  - `id`: Unique identifier for the report.
+  - `student_id`: References the student who submitted the report.
+  - `internship_id`: References the internship related to the report.
+  - `submission_date`: Date when the report was submitted.
+  - `report_url`: URL to the submitted report document.
+  - `executive_summary`: A brief summary of the attachment period.
+  - `activities_summary`: Summary of activities performed during the attachment.
+  - `learnings`: Key learnings from the attachment.
+  - `challenges`: Challenges faced during the attachment.
+  - `recommendations`: Recommendations for future improvements or observations.
+  - `status`: Current status of the report (e.g., Submitted, Reviewed, Approved, Rejected).
+  - `department_comments`: Comments from the department after reviewing the report.
+  - `final_grade`: Final grade awarded by the department.
+  - `created_at`: Timestamp when the report was created.
+  - `updated_at`: Timestamp when the report was last updated.
 
-2. Create a new directory for your project and navigate to it:
-   ```
-   mkdir internship-management-system
-   cd internship-management-system
-   ```
+### **2. BaseModelWithConfig**
+- **Role**: A base class for all models providing common configurations.
+- **Fields**:
+  - `model_config`: Configuration for Pydantic models including settings for arbitrary types and JSON encoding.
 
-3. Create a virtual environment:
-   ```
-   python -m venv venv
-   ```
+### **3. PyObjectId**
+- **Role**: Custom type for handling MongoDB ObjectId within Pydantic models.
+- **Fields**:
+  - `__get_validators__`: Provides validators for the ObjectId.
+  - `validate`: Validates if the ObjectId is valid.
+  - `__get_pydantic_json_schema__`: Defines JSON schema for ObjectId.
 
-4. Activate the virtual environment:
-   - On Windows:
-     ```
-     venv\Scripts\activate
-     ```
-   - On macOS and Linux:
-     ```
-     source venv/bin/activate
-     ```
+### **4. Address**
+- **Role**: Represents an address associated with entities like users or companies.
+- **Fields**:
+  - `street`, `city`, `state`, `country`, `postal_code`: Address details.
+  - `latitude`, `longitude`: Optional geographic coordinates.
 
-5. Install the required packages:
-   ```
-   pip install fastapi uvicorn python-jose[cryptography] passlib[bcrypt] python-multipart
-   ```
+### **5. ContactInfo**
+- **Role**: Holds contact information for users or companies.
+- **Fields**:
+  - `phone`, `alternative_phone`: Phone numbers.
+  - `email`, `alternative_email`: Email addresses.
 
-6. Create the necessary directories and files:
-   ```
-   mkdir API Data Services
-   touch main.py API/__init__.py Data/__init__.py Services/__init__.py
-   ```
+### **6. Department**
+- **Role**: Represents a department within a faculty.
+- **Fields**:
+  - `name`, `faculty_id`, `description`: Details of the department.
+  - `created_at`, `updated_at`: Timestamps for creation and last update.
 
-7. Copy the code for each file (main.py, middlewares, API files, etc.) into their respective locations in your project directory.
+### **7. Faculty**
+- **Role**: Represents a faculty in the institution.
+- **Fields**:
+  - `name`, `description`: Details of the faculty.
+  - `created_at`, `updated_at`: Timestamps for creation and last update.
 
-8. Ensure you have a MongoDB instance running. If you're using a cloud-hosted MongoDB, make sure you have the connection string.
+### **8. Programme**
+- **Role**: Represents an academic program within a department.
+- **Fields**:
+  - `name`, `department_id`, `description`: Details of the program.
+  - `created_at`, `updated_at`: Timestamps for creation and last update.
 
-9. Update the database connection settings in your `main.py` or wherever you've defined your database connection.
+### **9. User**
+- **Role**: Represents a user in the system, including students, supervisors, and other roles.
+- **Fields**:
+  - `role`, `email`, `password`, `first_name`, `last_name`: Basic user information.
+  - `profile_picture`, `contact_info`, `address`, `date_of_birth`, `gender`, `nationality`: Additional details.
 
-10. If you're using environment variables for sensitive information (like database credentials or JWT secret key), set these up in a `.env` file or in your system environment.
+### **10. AcademicInfo**
+- **Role**: Holds academic details for students.
+- **Fields**:
+  - `institution`, `degree`, `major`, `year_of_study`, `gpa`: Academic information.
 
+### **11. Student**
+- **Role**: Represents a student and their academic details, internships, and projects.
+- **Fields**:
+  - `registration_number`, `academic_info`, `resume_url`, `skills`, `interests`, `internships`, `projects`, `department_id`, `programme_id`: Student-specific information.
 
+### **12. Company**
+- **Role**: Represents a company posting internships.
+- **Fields**:
+  - `company_name`, `industry`, `company_size`, `year_founded`, `website`, `logo_url`, `description`, `address`, `contact_info`, `internships_posted`: Company-specific details.
 
+### **13. Internship**
+- **Role**: Represents an internship offered by a company.
+- **Fields**:
+  - `title`, `description`, `responsibilities`, `requirements`, `location`, `industry`, `internship_type`, `duration`, `start_date`, `end_date`, `stipend`, `application_deadline`, `max_applications`, `status`: Internship-specific details.
 
+### **14. Application**
+- **Role**: Represents a student's application for an internship.
+- **Fields**:
+  - `student_id`, `internship_id`, `status`, `application_date`, `cover_letter`, `resume_url`, `acceptance_date`, `rejection_date`, `withdrawal_date`, `start_date`, `end_date`: Application details.
 
-To run the code for this FastAPI-based Internship Management System, you'll need to set up your environment and then start the FastAPI server. Here's a step-by-step guide on how to run the code:
+### **15. Supervisor**
+- **Role**: Represents a supervisor, either company-based or school-based.
+- **Fields**:
+  - `type`, `department_id`, `position`, `company_id`, `assigned_students`, `qualifications`, `areas_of_expertise`: Supervisor details.
 
-1. Set up your environment:
+### **16. EvaluationCriteria**
+- **Role**: Represents the criteria used for evaluating student performance.
+- **Fields**:
+  - `criterion`, `score`, `max_score`, `weight`: Details of the evaluation criteria.
 
+### **17. Evaluation**
+- **Role**: Represents an evaluation conducted by a supervisor.
+- **Fields**:
+  - `application_id`, `supervisor_id`, `evaluation_type`, `evaluation_date`, `criteria`, `total_score`, `max_total_score`, `comments`, `strengths`, `areas_for_improvement`: Evaluation details.
 
+### **18. Notification**
+- **Role**: Represents notifications sent to users.
+- **Fields**:
+  - `user_id`, `title`, `description`, `notification_type`, `picture_url`, `link`, `created_at`, `read`, `read_at`: Notification details.
 
+### **19. VisitLocation**
+- **Role**: Represents a site visit to the internship location.
+- **Fields**:
+  - `supervisor_id`, `student_id`, `internship_id`, `company_id`, `source_location`, `destination_location`, `visit_date`, `status`, `notes`: Visit details.
 
+### **20. AppCredentials**
+- **Role**: Represents credentials for an application.
+- **Fields**:
+  - `app_id`, `app_key`, `app_name`, `description`, `created_by`, `created_at`, `updated_at`, `last_used`, `is_active`: Application credential details.
 
-# Setting Up Your Environment
-
-1. Ensure you have Python 3.7+ installed on your system.
-
-2. Create a new directory for your project and navigate to it:
-   ```
-   mkdir internship-management-system
-   cd internship-management-system
-   ```
-
-3. Create a virtual environment:
-   ```
-   python -m venv venv
-   ```
-
-4. Activate the virtual environment:
-   - On Windows:
-     ```
-     venv\Scripts\activate
-     ```
-   - On macOS and Linux:
-     ```
-     source venv/bin/activate
-     ```
-
-5. Install the required packages:
-   ```
-   pip install fastapi uvicorn python-jose[cryptography] passlib[bcrypt] python-multipart
-   ```
-
-6. Create the necessary directories and files:
-   ```
-   mkdir API Data Services
-   touch main.py API/__init__.py Data/__init__.py Services/__init__.py
-   ```
-
-7. Copy the code for each file (main.py, middlewares, API files, etc.) into their respective locations in your project directory.
-
-8. Ensure you have a MongoDB instance running. If you're using a cloud-hosted MongoDB, make sure you have the connection string.
-
-9. Update the database connection settings in your `main.py` or wherever you've defined your database connection.
-
-10. If you're using environment variables for sensitive information (like database credentials or JWT secret key), set these up in a `.env` file or in your system environment.
-
-
-2. Start the FastAPI server:
-
-Once you've set up your environment and project structure, you can start the FastAPI server. Here's how:
-
-
-
-Run the following command in your terminal, making sure you're in the project root directory and your virtual environment is activated:
-
-```
-uvicorn main:app --reload
-```
-
-This command does the following:
-- `uvicorn` is the ASGI server we're using to run our FastAPI application
-- `main:app` tells uvicorn to look for the `app` object in `main.py`
-- `--reload` enables auto-reloading, so the server will restart whenever you make changes to your code (useful for development)
-
-3. Access the API:
-
-Once the server is running, you should see output indicating that the server is running, typically on `http://127.0.0.1:8000`.
-
-You can now access your API:
-- The API documentation will be available at `http://127.0.0.1:8000/docs`
-- You can make requests to your API endpoints, e.g., `http://127.0.0.1:8000/api/users`
-
-Remember that most endpoints will require authentication, so you'll need to:
-1. Create an AppCredential (if you haven't already)
-2. Include the App_Id and App_Key in your request headers
-3. Obtain a JWT token by logging in
-4. Include the JWT token in the Authorization header for subsequent requests
-
-4. Testing:
-
-
-
-```bash
-# First, get a token
-curl -X POST "http://localhost:8000/api/users/token" \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -H "X-App-ID: your_app_id" \
-     -H "X-App-Key: your_app_key" \
-     -d "username=your_username&password=your_password"
-
-# Then use the token to make an authenticated request
-curl -X GET "http://localhost:8000/api/users" \
-     -H "Authorization: Bearer your_access_token" \
-     -H "X-App-ID: your_app_id" \
-     -H "X-App-Key: your_app_key"
-
-```
-
-Replace `your_app_id`, `your_app_key`, `your_username`, `your_password`, and `your_access_token` with actual values.
-
-Remember to handle any errors that may occur, especially during the initial setup and first run. You might need to debug and adjust your code or configuration based on any error messages you encounter.
-
-
-
+This structure helps manage different aspects of the system, including student details, internships, evaluations, and reporting, facilitating efficient tracking and assessment throughout the attachment period.

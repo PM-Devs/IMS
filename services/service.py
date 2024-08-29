@@ -1,4 +1,4 @@
-#services.py
+# services.py
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient
-from database.models import User, Student, Supervisor, Evaluation, Notification, VisitLocation, AppCredentials, Token
+from database.models import User, Student, Supervisor, Evaluation, Notification, VisitLocation, AppCredentials, Token, LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport
 from database.config import MONGODB_URI, DATABASE_NAME, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_DAYS
 
 # Create a MongoDB client
@@ -70,7 +70,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 async def get_current_active_supervisor(current_user: User = Depends(get_current_user)):
-    if current_user.role != "supervisor":
+    if current_user.role != "supervisor-school":
         raise HTTPException(status_code=400, detail="User is not a supervisor")
     return current_user
 
@@ -192,3 +192,90 @@ async def logout(token: str):
 async def is_token_blacklisted(token: str):
     blacklisted_token = await db.token_blacklist.find_one({"token": token})
     return blacklisted_token is not None
+
+# Supervisory Functions
+async def view_student_logs(supervisor_id: str, student_id: str, log_type: str):
+    supervisor = await db.supervisors.find_one({"_id": ObjectId(supervisor_id)})
+    if not supervisor:
+        raise HTTPException(status_code=404, detail="Supervisor not found")
+
+    if log_type == "daily":
+        logs = await db.logbook_entries.find({"student_id": ObjectId(student_id), "status": "Submitted"}).to_list(None)
+    elif log_type == "weekly":
+        logs = await db.monthly_summaries.find({"student_id": ObjectId(student_id), "status": "Submitted"}).to_list(None)
+    elif log_type == "monthly":
+        logs = await db.monthly_summaries.find({"student_id": ObjectId(student_id), "status": "Submitted"}).to_list(None)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid log type")
+
+    return logs
+
+async def mark_logbook(supervisor_id: str, logbook_id: str, status: str, comments: Optional[str] = None):
+    result = await db.logbook_entries.update_one(
+               {"_id": ObjectId(logbook_id), "supervisor_id": ObjectId(supervisor_id)},
+        {"$set": {"status": status, "comments": comments}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Logbook entry not found or not assigned to this supervisor")
+    return {"message": "Logbook entry updated successfully"}
+
+async def create_final_report(supervisor_id: str, student_id: str, report_data: dict):
+    supervisor = await db.supervisors.find_one({"_id": ObjectId(supervisor_id)})
+    if not supervisor:
+        raise HTTPException(status_code=404, detail="Supervisor not found")
+
+    student = await db.students.find_one({"_id": ObjectId(student_id)})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    final_assessment = await db.final_assessments.find_one({"student_id": ObjectId(student_id)})
+    if not final_assessment:
+        raise HTTPException(status_code=404, detail="Final assessment not found")
+
+    if final_assessment["status"] != "Approved":
+        raise HTTPException(status_code=403, detail="Final assessment not approved")
+
+    report_data["supervisor_id"] = ObjectId(supervisor_id)
+    report_data["student_id"] = ObjectId(student_id)
+    result = await db.attachment_reports.insert_one(report_data)
+    return str(result.inserted_id)
+
+async def update_final_report(report_id: str, report_data: dict):
+    result = await db.attachment_reports.update_one(
+        {"_id": ObjectId(report_id)},
+        {"$set": report_data}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Final report not found")
+    return {"message": "Final report updated successfully"}
+
+async def get_final_report(report_id: str):
+    report = await db.attachment_reports.find_one({"_id": ObjectId(report_id)})
+    if not report:
+        raise HTTPException(status_code=404, detail="Final report not found")
+    return report
+
+async def delete_final_report(report_id: str):
+    result = await db.attachment_reports.delete_one({"_id": ObjectId(report_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Final report not found")
+    return {"message": "Final report deleted successfully"}
+
+async def generate_evaluation_report(supervisor_id: str, student_id: str):
+    supervisor = await db.supervisors.find_one({"_id": ObjectId(supervisor_id)})
+    if not supervisor:
+        raise HTTPException(status_code=404, detail="Supervisor not found")
+
+    student = await db.students.find_one({"_id": ObjectId(student_id)})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    evaluations = await db.evaluations.find({"student_id": ObjectId(student_id)}).to_list(None)
+    if not evaluations:
+        raise HTTPException(status_code=404, detail="No evaluations found for this student")
+
+    return {
+        "student": student,
+        "evaluations": evaluations
+    }
+

@@ -1,15 +1,15 @@
-#main.py
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
-from database.models import User, Student, Supervisor, Evaluation, Notification, VisitLocation, Token
+from database.models import User, Student, Supervisor, Evaluation, Notification, VisitLocation, Token, LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport
 from services.service import (
     get_current_active_supervisor, get_supervisor_dashboard, search_students,
     get_student_list, update_student_status, get_visit_locations, create_visit_location,
     update_visit_location, delete_visit_location, get_supervisor_profile,
     update_supervisor_profile, delete_supervisor, authenticate_user, create_access_token,
-    logout
+    logout, view_student_logs, mark_logbook, create_final_report, update_final_report,
+    get_final_report, delete_final_report, generate_evaluation_report
 )
 from middleware.log import log_middleware
 from middleware.auth import auth_middleware
@@ -104,3 +104,38 @@ async def update_profile(profile_data: dict, current_user: User = Depends(get_cu
 async def delete_profile(current_user: User = Depends(get_current_active_supervisor)):
     async with get_database() as db:
         return await delete_supervisor(db, str(current_user.id))
+
+@app.get("/logs/{student_id}/{log_type}")
+async def get_student_logs(student_id: str, log_type: str, current_user: User = Depends(get_current_active_supervisor)):
+    async with get_database() as db:
+        return await view_student_logs(db, str(current_user.id), student_id, log_type)
+
+@app.put("/logs/{logbook_id}/mark")
+async def mark_logbook_entry(logbook_id: str, status: str, comments: Optional[str] = None, current_user: User = Depends(get_current_active_supervisor)):
+    async with get_database() as db:
+        return await mark_logbook(db, str(current_user.id), logbook_id, status, comments)
+
+@app.post("/final-reports")
+async def create_final_report_endpoint(student_id: str, report_data: dict, current_user: User = Depends(get_current_active_supervisor)):
+    async with get_database() as db:
+        return await create_final_report(db, str(current_user.id), student_id, report_data)
+
+@app.put("/final-reports/{report_id}")
+async def update_final_report_endpoint(report_id: str, report_data: dict, current_user: User = Depends(get_current_active_supervisor)):
+    async with get_database() as db:
+        return await update_final_report(db, report_id, report_data)
+
+@app.get("/final-reports/{report_id}")
+async def get_final_report_endpoint(report_id: str, current_user: User = Depends(get_current_active_supervisor)):
+    async with get_database() as db:
+        return await get_final_report(db, report_id)
+
+@app.delete("/final-reports/{report_id}")
+async def delete_final_report_endpoint(report_id: str, current_user: User = Depends(get_current_active_supervisor)):
+    async with get_database() as db:
+        return await delete_final_report(db, report_id)
+
+@app.get("/evaluations")
+async def generate_evaluation_report_endpoint(student_id: str, current_user: User = Depends(get_current_active_supervisor)):
+    async with get_database() as db:
+        return await generate_evaluation_report(db, str(current_user.id), student_id)

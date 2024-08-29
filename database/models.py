@@ -1,3 +1,4 @@
+#models.py
 from bson import ObjectId
 from pydantic import BaseModel, Field, EmailStr, HttpUrl, ConfigDict
 from typing import Any, Dict, Optional, List, Annotated
@@ -40,9 +41,32 @@ class ContactInfo(BaseModelWithConfig):
     email: EmailStr
     alternative_email: Optional[EmailStr] = None
 
+class Department(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    name: str
+    faculty_id: PyObjectId
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Faculty(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    name: str
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Programme(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    name: str
+    department_id: PyObjectId
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 class User(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    role: str
+    role: str  # E.g., 'Student', 'Company', 'Supervisor', 'Admin', 'ILO'
     email: EmailStr
     password: str
     first_name: str
@@ -71,8 +95,10 @@ class Student(BaseModelWithConfig):
     resume_url: Optional[HttpUrl] = None
     skills: List[str] = []
     interests: List[str] = []
-    internships: List[Dict[str, Any]] = []
+    internships: List[PyObjectId] = []  # List of internship IDs
     projects: List[Dict[str, Any]] = []
+    department_id: PyObjectId
+    programme_id: PyObjectId
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -88,7 +114,7 @@ class Company(BaseModelWithConfig):
     description: str
     address: Address
     contact_info: ContactInfo
-    internships_posted: List[PyObjectId] = []
+    internships_posted: List[PyObjectId] = []  # List of internship IDs
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -116,7 +142,7 @@ class Application(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
     student_id: PyObjectId
     internship_id: PyObjectId
-    status: str
+    status: str  # E.g., 'Applied', 'Accepted', 'Rejected', 'Withdrawn'
     application_date: datetime
     cover_letter: str
     resume_url: HttpUrl
@@ -131,11 +157,11 @@ class Application(BaseModelWithConfig):
 class Supervisor(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
     user_id: PyObjectId
-    type: str
-    department: Optional[str] = None
+    type: str  # E.g., 'Company' or 'School'
+    department_id: Optional[PyObjectId] = None
     position: str
     company_id: Optional[PyObjectId] = None
-    assigned_students: List[PyObjectId] = []
+    assigned_students: List[PyObjectId] = []  # List of student IDs
     qualifications: List[str] = []
     areas_of_expertise: List[str] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -151,7 +177,7 @@ class Evaluation(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
     application_id: PyObjectId
     supervisor_id: PyObjectId
-    evaluation_type: str
+    evaluation_type: str  # E.g., 'Midterm', 'Final'
     evaluation_date: datetime
     criteria: List[EvaluationCriteria]
     total_score: float
@@ -167,7 +193,7 @@ class Notification(BaseModelWithConfig):
     user_id: PyObjectId
     title: str
     description: str
-    notification_type: str
+    notification_type: str  # E.g., 'Application Status', 'Reminder'
     picture_url: Optional[HttpUrl] = None
     link: Optional[HttpUrl] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -183,7 +209,7 @@ class VisitLocation(BaseModelWithConfig):
     source_location: Address
     destination_location: Address
     visit_date: datetime
-    status: str
+    status: str  # E.g., 'Completed', 'Pending'
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -200,7 +226,7 @@ class AppCredentials(BaseModelWithConfig):
     last_used: Optional[datetime] = None
     is_active: bool = True
 
-class DailyLog(BaseModelWithConfig):
+class LogBookEntry(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
     student_id: PyObjectId
     internship_id: PyObjectId
@@ -209,39 +235,51 @@ class DailyLog(BaseModelWithConfig):
     learning_outcomes: List[str]
     challenges: Optional[str] = None
     hours_worked: float
-    status: str
+    status: str  # E.g., 'Submitted', 'Reviewed'
     supervisor_comments: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-class WeeklyReport(BaseModelWithConfig):
+class MonthlySummary(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
     student_id: PyObjectId
     internship_id: PyObjectId
-    week_start_date: datetime
-    week_end_date: datetime
+    month: str  # Format: 'YYYY-MM'
     summary: str
     key_learnings: List[str]
     challenges: Optional[str] = None
-    goals_for_next_week: List[str]
-    status: str
+    goals_for_next_month: List[str]
+    status: str  # E.g., 'Submitted', 'Reviewed'
     supervisor_comments: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-class FinalReport(BaseModelWithConfig):
+class FinalAssessment(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    student_id: PyObjectId
+    internship_id: PyObjectId
+    assessment_date: datetime
+    final_report_url: HttpUrl
+    overall_performance: str  # E.g., 'Excellent', 'Good', 'Satisfactory', 'Needs Improvement'
+    final_grade: Optional[float] = None
+    supervisor_comments: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class AttachmentReport(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
     student_id: PyObjectId
     internship_id: PyObjectId
     submission_date: datetime
     report_url: HttpUrl
     executive_summary: str
+    activities_summary: str
     learnings: List[str]
     challenges: List[str]
     recommendations: List[str]
-    status: str
-    supervisor_comments: Optional[str] = None
-    grade: Optional[float] = None
+    status: str  # E.g., 'Submitted', 'Reviewed', 'Approved', 'Rejected'
+    department_comments: Optional[str] = None
+    final_grade: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
