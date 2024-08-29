@@ -175,3 +175,6 @@ async def delete_final_report_endpoint(report_id: str, current_user: User = Depe
 async def generate_evaluation_report_endpoint(student_id: str, current_user: User = Depends(get_current_active_supervisor)):
     async with get_database() as db:
         return await generate_evaluation_report(db, str(current_user.id), student_id)
+@app.get("/")
+async def hello():
+    return {"Your Ip address is collected, you are being tracked for visiting this page!."}

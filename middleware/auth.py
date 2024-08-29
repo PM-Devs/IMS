@@ -1,9 +1,10 @@
-from fastapi import Request, HTTPException
+from fastapi import Request, Response
+from starlette.status import HTTP_401_UNAUTHORIZED
 from services.service import verify_app_credentials, is_token_blacklisted
 
 async def auth_middleware(request: Request, call_next):
     # List of paths that don't require authentication
-    open_paths = ["/docs", "/openapi.json", "/redoc"]
+    open_paths = ["/docs", "/openapi.json", "/"]
     
     # Skip authentication checks for open paths
     if request.url.path in open_paths:
@@ -15,11 +16,11 @@ async def auth_middleware(request: Request, call_next):
     
     # Check if application credentials are missing
     if not app_id or not app_key:
-        raise HTTPException(status_code=400, detail="Missing application credentials")
+        return Response(content="Unauthorized: Missing application credentials", status_code=HTTP_401_UNAUTHORIZED)
     
     # Verify application credentials
     if not await verify_app_credentials(app_id, app_key):
-        raise HTTPException(status_code=401, detail="Invalid application credentials")
+        return Response(content="Unauthorized: Invalid application credentials", status_code=HTTP_401_UNAUTHORIZED)
     
     # Check Authorization header for token
     authorization = request.headers.get("Authorization")
@@ -28,12 +29,12 @@ async def auth_middleware(request: Request, call_next):
             token_type, token = authorization.split()
             # Ensure token format is correct
             if token_type.lower() != "bearer" or not token:
-                raise HTTPException(status_code=400, detail="Invalid Authorization header format")
+                return Response(content="Unauthorized: Invalid Authorization header format", status_code=HTTP_401_UNAUTHORIZED)
             # Check if token is blacklisted
             if await is_token_blacklisted(token):
-                raise HTTPException(status_code=401, detail="Token has been revoked")
+                return Response(content="Unauthorized: Token has been revoked", status_code=HTTP_401_UNAUTHORIZED)
         except (ValueError, IndexError):
-            raise HTTPException(status_code=400, detail="Invalid Authorization header format")
+            return Response(content="Unauthorized: Invalid Authorization header format", status_code=HTTP_401_UNAUTHORIZED)
 
     # Proceed to the next middleware or endpoint
     response = await call_next(request)
