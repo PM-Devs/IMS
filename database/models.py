@@ -3,7 +3,11 @@ from bson import ObjectId
 from pydantic import BaseModel, Field, EmailStr, HttpUrl, ConfigDict
 from typing import Any, Dict, Optional, List, Annotated
 from datetime import datetime
-
+from bson import ObjectId
+from pydantic import BaseModel, Field, EmailStr, HttpUrl, ConfigDict
+from typing import Any, Dict, Optional, List, Annotated
+from datetime import datetime
+from geopy.distance import geodesic
 class PyObjectId(ObjectId):
     @classmethod
     def __get_validators__(cls):
@@ -87,20 +91,7 @@ class AcademicInfo(BaseModelWithConfig):
     year_of_study: int
     gpa: float
 
-class Student(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    user_id: PyObjectId
-    registration_number: str
-    academic_info: AcademicInfo
-    resume_url: Optional[HttpUrl] = None
-    skills: List[str] = []
-    interests: List[str] = []
-    internships: List[PyObjectId] = []  # List of internship IDs
-    projects: List[Dict[str, Any]] = []
-    department_id: PyObjectId
-    programme_id: PyObjectId
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class Company(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
@@ -154,18 +145,7 @@ class Application(BaseModelWithConfig):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-class Supervisor(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    user_id: PyObjectId
-    type: str  # E.g., 'Company' or 'School'
-    department_id: Optional[PyObjectId] = None
-    position: str
-    company_id: Optional[PyObjectId] = None
-    assigned_students: List[PyObjectId] = []  # List of student IDs
-    qualifications: List[str] = []
-    areas_of_expertise: List[str] = []
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class EvaluationCriteria(BaseModelWithConfig):
     criterion: str
@@ -287,3 +267,70 @@ class Token(BaseModelWithConfig):
     access_token: str
     token_type: str
     expires_at: datetime
+    
+
+
+class Zone(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    name: str
+    description: Optional[str] = None
+    locations: List[Address]  # List of locations covered by this zone
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Supervisor(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    user_id: PyObjectId
+    type: str  # E.g., 'Company' or 'School'
+    department_id: Optional[PyObjectId] = None
+    position: str
+    company_id: Optional[PyObjectId] = None
+    assigned_students: List[PyObjectId] = []  # List of student IDs
+    qualifications: List[str] = []
+    areas_of_expertise: List[str] = []
+    zone_id: PyObjectId  # New field to associate supervisor with a zone
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Student(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    user_id: PyObjectId
+    registration_number: str
+    academic_info: AcademicInfo
+    resume_url: Optional[HttpUrl] = None
+    skills: List[str] = []
+    interests: List[str] = []
+    internships: List[PyObjectId] = []  # List of internship IDs
+    projects: List[Dict[str, Any]] = []
+    department_id: PyObjectId
+    programme_id: PyObjectId
+    zone_id: PyObjectId  # New field to associate student with a zone
+    current_location: Optional[Address] = None  # New field for real-time location
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+  
+
+class ChatMessage(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    sender_id: PyObjectId
+    receiver_id: PyObjectId
+    content: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    read: bool = False
+    read_at: Optional[datetime] = None
+
+class ChatRoom(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    participants: List[PyObjectId]  # List of user IDs
+    messages: List[PyObjectId]  # List of message IDs
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ZoneChat(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    zone_id: PyObjectId
+    participants: List[PyObjectId]  # List of supervisor IDs in this zone
+    messages: List[PyObjectId]  # List of message IDs
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

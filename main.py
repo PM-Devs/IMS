@@ -3,20 +3,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from database.models import User, Student, Supervisor, Evaluation, Notification, VisitLocation, Token, LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport
-from services.service import (
-    get_current_active_supervisor, get_supervisor_dashboard, search_students,
-    get_student_list, update_student_status, get_visit_locations, create_visit_location,
-    update_visit_location, delete_visit_location, get_supervisor_profile,
-    update_supervisor_profile, delete_supervisor, authenticate_user, create_access_token,
-    logout, view_student_logs, mark_logbook, create_final_report, update_final_report,
-    get_final_report, delete_final_report, generate_evaluation_report
-)
+from services import service
 from middleware.log import log_middleware
 from middleware.auth import auth_middleware
 from middleware.requestValidity import request_validity_middleware
 from database.config import get_database
 from pydantic import BaseModel
-app = FastAPI()
+
+app = FastAPI(title="Supervisor API", description="API for managing supervisor activities in the internship system")
 
 # Add CORS middleware
 app.add_middleware(
@@ -32,25 +26,16 @@ app.middleware("http")(log_middleware)
 app.middleware("http")(auth_middleware)
 app.middleware("http")(request_validity_middleware)
 
-
-
-
 class CustomLoginRequest(BaseModel):
     grant_type: str
     username: str
     password: str
-    scope: str = None
-def get_scope(self):
-        # Default to "R-WR-R-R" if no scope provided
-        """function and set specific permissions for the supervisor role, you can modify the function to accept a scopes parameter. In this case, the scope "R-WR-R-R" will indicate:
+    scope: Optional[str] = None
 
-    First Column (R) symbolizes Student: Supervisor can only read student information.
-    Second Column (WR) symbolizes Supervisor: Supervisor can write and read supervisor information.
-    Third Column (R) symbolizes Company: Supervisor can only read company data.
-    Fourth Column (R) symbolizes Department: Supervisor can read department data."""
+    def get_scope(self):
         return self.scope or "R-WR-R-R"
 
-@app.post("/login", response_model=Token)
+@app.post("/login", response_model=Token, summary="Authenticate and obtain access token")
 async def login_for_access_token(request: CustomLoginRequest):
     if request.grant_type != "password":
         raise HTTPException(
@@ -58,123 +43,150 @@ async def login_for_access_token(request: CustomLoginRequest):
             detail="Invalid grant_type. Expected 'password'."
         )
     
-    # Default scope for supervisors or use provided one
+    user = await service.authenticate_user(request.username, request.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     scopes = request.get_scope()
+    return service.create_access_token(data={"sub": user.email}, scopes=scopes)
 
-    # Authenticating user
-    async with get_database() as db:
-        user = await authenticate_user(db, request.username, request.password)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Check and adjust scopes based on user role if needed
-        # Assuming 'R-WR-R-R' is for supervisors
-        if not scopes:  # If no scope is provided
-            scopes = "R-WR-R-R"  # Default scope for supervisors
-        
-        # Generate access token with scope
-        return create_access_token(data={"sub": user.email}, scopes=scopes)
+@app.post("/logout", summary="Logout and invalidate the current token")
+async def logout_user(current_user: User = Depends(service.get_current_active_supervisor)):
+    await service.logout(current_user.token)
+    return {"message": "Successfully logged out"}
 
+@app.get("/dashboard", summary="Get supervisor dashboard information")
+async def dashboard(current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_supervisor_dashboard(str(current_user.id))
 
-@app.post("/logout")
-async def logout_user(current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        await logout(db, current_user.id)
-        return {"message": "Successfully logged out"}
+@app.get("/students/search", summary="Search for students")
+async def search_students_endpoint(query: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.search_students(str(current_user.id), query)
 
-@app.get("/dashboard")
-async def dashboard(current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await get_supervisor_dashboard(db, str(current_user.id))
+@app.get("/students", summary="Get list of students")
+async def student_list(status: Optional[str] = None, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_student_list(str(current_user.id), status)
 
-@app.get("/students/search")
-async def search_students_endpoint(query: str, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await search_students(db, str(current_user.id), query)
+@app.put("/students/{student_id}/status", summary="Update student status")
+async def update_student_status_endpoint(student_id: str, status: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.update_student_status(student_id, status)
 
-@app.get("/students")
-async def student_list(status: Optional[str] = None, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await get_student_list(db, str(current_user.id), status)
+@app.get("/students/{student_id}/location", summary="Get student's current location")
+async def get_student_location_endpoint(student_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_student_location(student_id)
 
-@app.put("/students/{student_id}/status")
-async def update_student_status_endpoint(student_id: str, status: str, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await update_student_status(db, student_id, status)
+@app.get("/students/{student_id}/at-company/{company_id}", summary="Check if student is at company")
+async def is_student_at_company_endpoint(student_id: str, company_id: str, max_distance: float = 200, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.is_student_at_company(student_id, company_id, max_distance)
 
-@app.get("/visit-locations")
-async def visit_locations(current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await get_visit_locations(db, str(current_user.id))
+@app.get("/visit-locations", summary="Get visit locations")
+async def visit_locations(current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_visit_locations(str(current_user.id))
 
-@app.post("/visit-locations")
-async def create_visit_location_endpoint(visit_location: VisitLocation, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await create_visit_location(db, str(current_user.id), visit_location)
+@app.post("/visit-locations", summary="Create a new visit location")
+async def create_visit_location_endpoint(visit_data: dict, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.create_visit_location(str(current_user.id), visit_data)
 
-@app.put("/visit-locations/{visit_location_id}")
-async def update_visit_location_endpoint(visit_location_id: str, visit_location: VisitLocation, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await update_visit_location(db, visit_location_id, visit_location)
+@app.put("/visit-locations/{visit_location_id}", summary="Update a visit location")
+async def update_visit_location_endpoint(visit_location_id: str, visit_location: VisitLocation, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.update_visit_location(visit_location_id, visit_location)
 
-@app.delete("/visit-locations/{visit_location_id}")
-async def delete_visit_location_endpoint(visit_location_id: str, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await delete_visit_location(db, visit_location_id)
+@app.delete("/visit-locations/{visit_location_id}", summary="Delete a visit location")
+async def delete_visit_location_endpoint(visit_location_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.delete_visit_location(visit_location_id)
 
-@app.get("/profile")
-async def get_profile(current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await get_supervisor_profile(db, str(current_user.id))
+@app.put("/visit-locations/{visit_id}/status", summary="Update visit status")
+async def update_visit_status_endpoint(visit_id: str, status: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.update_visit_status(visit_id, status)
 
-@app.put("/profile")
-async def update_profile(profile_data: dict, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await update_supervisor_profile(db, str(current_user.id), profile_data)
+@app.get("/profile", summary="Get supervisor profile")
+async def get_profile(current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_supervisor_profile(str(current_user.id))
 
-@app.delete("/profile")
-async def delete_profile(current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await delete_supervisor(db, str(current_user.id))
+@app.put("/profile", summary="Update supervisor profile")
+async def update_profile(profile_data: dict, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.update_supervisor_profile(str(current_user.id), profile_data)
 
-@app.get("/logs/{student_id}/{log_type}")
-async def get_student_logs(student_id: str, log_type: str, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await view_student_logs(db, str(current_user.id), student_id, log_type)
+@app.delete("/profile", summary="Delete supervisor profile")
+async def delete_profile(current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.delete_supervisor(str(current_user.id))
 
-@app.put("/logs/{logbook_id}/mark")
-async def mark_logbook_entry(logbook_id: str, status: str, comments: Optional[str] = None, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await mark_logbook(db, str(current_user.id), logbook_id, status, comments)
+@app.get("/logs/{student_id}/{log_type}", summary="View student logs")
+async def get_student_logs(student_id: str, log_type: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.view_student_logs(student_id, log_type)
 
-@app.post("/final-reports")
-async def create_final_report_endpoint(student_id: str, report_data: dict, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await create_final_report(db, str(current_user.id), student_id, report_data)
+@app.put("/logs/{logbook_id}/mark", summary="Mark logbook entry")
+async def mark_logbook_entry(logbook_id: str, status: str, comments: Optional[str] = None, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.mark_logbook(str(current_user.id), logbook_id, status, comments)
 
-@app.put("/final-reports/{report_id}")
-async def update_final_report_endpoint(report_id: str, report_data: dict, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await update_final_report(db, report_id, report_data)
+@app.post("/final-reports", summary="Create final report")
+async def create_final_report_endpoint(student_id: str, report_data: dict, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.create_final_report(str(current_user.id), student_id, report_data)
 
-@app.get("/final-reports/{report_id}")
-async def get_final_report_endpoint(report_id: str, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await get_final_report(db, report_id)
+@app.put("/final-reports/{report_id}", summary="Update final report")
+async def update_final_report_endpoint(report_id: str, report_data: dict, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.update_final_report(report_id, report_data)
 
-@app.delete("/final-reports/{report_id}")
-async def delete_final_report_endpoint(report_id: str, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await delete_final_report(db, report_id)
+@app.get("/final-reports/{report_id}", summary="Get final report")
+async def get_final_report_endpoint(report_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_final_report(report_id)
 
-@app.get("/evaluations")
-async def generate_evaluation_report_endpoint(student_id: str, current_user: User = Depends(get_current_active_supervisor)):
-    async with get_database() as db:
-        return await generate_evaluation_report(db, str(current_user.id), student_id)
-@app.get("/")
-async def hello():
-    return {"Your Ip address is collected, you are being tracked for visiting this page!."}
+@app.delete("/final-reports/{report_id}", summary="Delete final report")
+async def delete_final_report_endpoint(report_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.delete_final_report(report_id)
+
+@app.post("/evaluations", summary="Create evaluation")
+async def create_evaluation_endpoint(student_id: str, evaluation_data: dict, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.create_evaluation(str(current_user.id), student_id, evaluation_data)
+
+@app.get("/evaluations/{student_id}/report", summary="Generate evaluation report")
+async def generate_evaluation_report_endpoint(student_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.generate_evaluation_report(str(current_user.id), student_id)
+
+@app.put("/zones/{supervisor_id}/assign", summary="Assign supervisor to zone")
+async def assign_supervisor_to_zone_endpoint(supervisor_id: str, zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.assign_supervisor_to_zone(supervisor_id, zone_id)
+
+@app.get("/zones/{zone_id}/supervisors", summary="Get supervisors in zone")
+async def get_supervisors_in_zone_endpoint(zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_supervisors_in_zone(zone_id)
+
+@app.put("/supervisors/{supervisor_id}/assign-students", summary="Assign students to supervisor")
+async def assign_students_to_supervisor_endpoint(supervisor_id: str, student_ids: List[str], current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.assign_students_to_supervisor(supervisor_id, student_ids)
+
+@app.get("/supervisors/{supervisor_id}/assigned-students", summary="Get assigned students")
+async def get_assigned_students_endpoint(supervisor_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_assigned_students(supervisor_id)
+
+@app.get("/supervisors/{supervisor_id}/workload", summary="Get supervisor workload")
+async def get_supervisor_workload_endpoint(supervisor_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_supervisor_workload(supervisor_id)
+
+@app.put("/zones/{zone_id}/balance-workload", summary="Balance supervisor workload in zone")
+async def balance_supervisor_workload_endpoint(zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.balance_supervisor_workload(zone_id)
+
+@app.put("/workload/manage", summary="Manage supervisor workload across all zones")
+async def manage_supervisor_workload_endpoint(current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.manage_supervisor_workload()
+
+@app.get("/zones/{zone_id}/chat", summary="Get zone chat")
+async def get_zone_chat_endpoint(zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_zone_chat(zone_id)
+
+@app.post("/zones/{zone_id}/chat/message", summary="Add message to zone chat")
+async def add_message_to_zone_chat_endpoint(zone_id: str, content: str, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.add_message_to_zone_chat(zone_id, str(current_user.id), content)
+
+@app.get("/zones/{zone_id}/chat/messages", summary="Get zone chat messages")
+async def get_zone_chat_messages_endpoint(zone_id: str, limit: int = 50, skip: int = 0, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.get_zone_chat_messages(zone_id, limit, skip)
+
+@app.get("/", summary="Root endpoint")
+async def root():
+    return {"message": "Welcome to the Supervisor API. Please refer to the /docs for API documentation."}
