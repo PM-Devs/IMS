@@ -70,7 +70,7 @@ class Programme(BaseModelWithConfig):
 
 class User(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    role: str  # E.g., 'Student', 'Company', 'Supervisor', 'Admin', 'ILO'
+    role: str  # E.g., 'Student', 'Company', 'Supervisor', 'Department','ILO'
     email: EmailStr
     password: str
     first_name: str
@@ -300,6 +300,8 @@ class Student(BaseModelWithConfig):
     resume_url: Optional[HttpUrl] = None
     skills: List[str] = []
     interests: List[str] = []
+    homeTown: str
+    homeTown_GPS_Address: str
     internships: List[PyObjectId] = []  # List of internship IDs
     projects: List[Dict[str, Any]] = []
     department_id: PyObjectId
@@ -332,5 +334,24 @@ class ZoneChat(BaseModelWithConfig):
     zone_id: PyObjectId
     participants: List[PyObjectId]  # List of supervisor IDs in this zone
     messages: List[PyObjectId]  # List of message IDs
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Rating(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    student_id: PyObjectId
+    company_id: PyObjectId
+    internship_id: PyObjectId
+    rating_score: float = Field(..., ge=0, le=5)  # Rating from 0 to 5
+    comments: str
+    rating_date: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class WhiteList(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    company_id: PyObjectId
+    internship_id: PyObjectId
+    comments: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
