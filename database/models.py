@@ -1,13 +1,9 @@
-#models.py
-from bson import ObjectId
-from pydantic import BaseModel, Field, EmailStr, HttpUrl, ConfigDict
-from typing import Any, Dict, Optional, List, Annotated
-from datetime import datetime
 from bson import ObjectId
 from pydantic import BaseModel, Field, EmailStr, HttpUrl, ConfigDict
 from typing import Any, Dict, Optional, List, Annotated
 from datetime import datetime
 from geopy.distance import geodesic
+
 class PyObjectId(ObjectId):
     @classmethod
     def __get_validators__(cls):
@@ -39,6 +35,20 @@ class Address(BaseModelWithConfig):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
+class Area(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    name: str
+    source_location: Address
+    destination_locations: List[Address]
+
+class Zone(BaseModelWithConfig):
+    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
+    name: str
+    description: Optional[str] = None
+    areas: List[Area]
+    zone_leader: PyObjectId  # New field for zone leader
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 class ContactInfo(BaseModelWithConfig):
     phone: str
     alternative_phone: Optional[str] = None
@@ -70,7 +80,7 @@ class Programme(BaseModelWithConfig):
 
 class User(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    role: str  # E.g., 'Student', 'Company', 'Supervisor', 'Department','ILO'
+    role: str  # E.g., 'Student', 'Company', 'Supervisor', 'Department', 'ILO'
     email: EmailStr
     password: str
     first_name: str
@@ -91,8 +101,6 @@ class AcademicInfo(BaseModelWithConfig):
     year_of_study: int
     gpa: float
 
-
-
 class Company(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
     user_id: PyObjectId
@@ -106,6 +114,7 @@ class Company(BaseModelWithConfig):
     address: Address
     contact_info: ContactInfo
     internships_posted: List[PyObjectId] = []  # List of internship IDs
+    company_supervisors: List[PyObjectId] = []  # List of company supervisor user IDs
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -144,8 +153,6 @@ class Application(BaseModelWithConfig):
     end_date: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-
 
 class EvaluationCriteria(BaseModelWithConfig):
     criterion: str
@@ -267,28 +274,17 @@ class Token(BaseModelWithConfig):
     access_token: str
     token_type: str
     expires_at: datetime
-    
 
-
-class Zone(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    name: str
-    description: Optional[str] = None
-    locations: List[Address]  # List of locations covered by this zone
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-class Supervisor(BaseModelWithConfig):
+class SchoolSupervisor(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
     user_id: PyObjectId
-    type: str  # E.g., 'Company' or 'School'
-    department_id: Optional[PyObjectId] = None
+    department_id: PyObjectId
     position: str
-    company_id: Optional[PyObjectId] = None
     assigned_students: List[PyObjectId] = []  # List of student IDs
     qualifications: List[str] = []
     areas_of_expertise: List[str] = []
-    zone_id: PyObjectId  # New field to associate supervisor with a zone
+    duty_status : bool
+    zone_id: PyObjectId  # Associate supervisor with a zone
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -306,12 +302,10 @@ class Student(BaseModelWithConfig):
     projects: List[Dict[str, Any]] = []
     department_id: PyObjectId
     programme_id: PyObjectId
-    zone_id: PyObjectId  # New field to associate student with a zone
-    current_location: Optional[Address] = None  # New field for real-time location
+    zone_id: PyObjectId  # Associate student with a zone
+    current_location: Optional[Address] = None  # Real-time location
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-  
 
 class ChatMessage(BaseModelWithConfig):
     id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
-from database.models import User, Student, Supervisor, Evaluation, Notification, VisitLocation, Token, LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport
+from database.models import User, Student, SchoolSupervisor, Evaluation, Notification, VisitLocation, Token, LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport, ChatMessage, ChatRoom, ZoneChat
 from services import service
 from middleware.log import log_middleware
 from middleware.auth import auth_middleware
@@ -147,17 +147,9 @@ async def create_evaluation_endpoint(student_id: str, evaluation_data: dict, cur
 async def generate_evaluation_report_endpoint(student_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
     return await service.generate_evaluation_report(str(current_user.id), student_id)
 
-@app.put("/zones/{supervisor_id}/assign", summary="Assign supervisor to zone")
-async def assign_supervisor_to_zone_endpoint(supervisor_id: str, zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.assign_supervisor_to_zone(supervisor_id, zone_id)
-
 @app.get("/zones/{zone_id}/supervisors", summary="Get supervisors in zone")
 async def get_supervisors_in_zone_endpoint(zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
     return await service.get_supervisors_in_zone(zone_id)
-
-@app.put("/supervisors/{supervisor_id}/assign-students", summary="Assign students to supervisor")
-async def assign_students_to_supervisor_endpoint(supervisor_id: str, student_ids: List[str], current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.assign_students_to_supervisor(supervisor_id, student_ids)
 
 @app.get("/supervisors/{supervisor_id}/assigned-students", summary="Get assigned students")
 async def get_assigned_students_endpoint(supervisor_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
@@ -166,14 +158,6 @@ async def get_assigned_students_endpoint(supervisor_id: str, current_user: User 
 @app.get("/supervisors/{supervisor_id}/workload", summary="Get supervisor workload")
 async def get_supervisor_workload_endpoint(supervisor_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
     return await service.get_supervisor_workload(supervisor_id)
-
-@app.put("/zones/{zone_id}/balance-workload", summary="Balance supervisor workload in zone")
-async def balance_supervisor_workload_endpoint(zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.balance_supervisor_workload(zone_id)
-
-@app.put("/workload/manage", summary="Manage supervisor workload across all zones")
-async def manage_supervisor_workload_endpoint(current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.manage_supervisor_workload()
 
 @app.get("/zones/{zone_id}/chat", summary="Get zone chat")
 async def get_zone_chat_endpoint(zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
