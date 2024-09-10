@@ -8,7 +8,7 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient
 from geopy.distance import geodesic
 from database.models import (
-    Rating, User, Student, SchoolSupervisor, Evaluation, Notification, VisitLocation, AppCredentials, Token,
+    PyObjectId, Rating, User, Student, SchoolSupervisor, Evaluation, Notification, VisitLocation, AppCredentials, Token,
     LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport, WhiteList, Zone, Area, ChatMessage, ChatRoom, ZoneChat
 )
 from database.config import MONGODB_URI, DATABASE_NAME, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_DAYS
