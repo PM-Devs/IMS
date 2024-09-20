@@ -1,8 +1,8 @@
 from bson import ObjectId
-from pydantic import BaseModel, Field, EmailStr, HttpUrl, ConfigDict
-from typing import Any, Dict, Optional, List, Annotated, Tuple
+from pydantic import BaseModel, Field, EmailStr, HttpUrl, ConfigDict, GetCoreSchemaHandler
+from typing import Any, Dict, Optional, List, Annotated
 from datetime import datetime
-from geopy.distance import geodesic
+from pydantic_core import core_schema
 
 class PyObjectId(ObjectId):
     @classmethod
@@ -16,396 +16,404 @@ class PyObjectId(ObjectId):
         return ObjectId(v)
 
     @classmethod
-    def __get_pydantic_json_schema__(cls, _schema: Any, _handler: Any) -> Dict[str, Any]:
-        return {"type": "string"}
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        return core_schema.json_or_python_schema(
+            json_schema=core_schema.str_schema(),
+            python_schema=core_schema.union_schema([
+                core_schema.is_instance_schema(ObjectId),
+                core_schema.no_info_plain_validator_function(cls.validate),
+            ]),
+            serialization=core_schema.plain_serializer_function_ser_schema(str),
+        )
 
 class BaseModelWithConfig(BaseModel):
     model_config = ConfigDict(
-        populate_by_name=True,
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
 
 class Coordinate(BaseModelWithConfig):
-    latitude: float
-    longitude: float
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 class Address(BaseModelWithConfig):
-    street: str
-    city: str
-    state: str
-    country: str
-    postal_code: str
+    street: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    postal_code: Optional[str] = None
     coordinate: Optional[Coordinate] = None
 
 class Zone(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    name: str
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    name: Optional[str] = None
     description: Optional[str] = None
-    boundaries: List[Coordinate]  # Four points defining the zone
-    zone_leader: PyObjectId  # Reference to SchoolSupervisor
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    boundaries: Optional[List[Coordinate]] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Area(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    name: str
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    name: Optional[str] = None
     description: Optional[str] = None
-    boundaries: List[Coordinate]  # Four points defining the area
-    zone_id: PyObjectId
-    supervisors: List[PyObjectId] = []  # References to SchoolSupervisor
-    students: List[PyObjectId] = []  # References to Student
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    boundaries: Optional[List[Coordinate]] = None
+    zone_id: Optional[PyObjectId] = None
+    supervisors: Optional[List[PyObjectId]] = None
+    students: Optional[List[PyObjectId]] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class ContactInfo(BaseModelWithConfig):
-    phone: str
+    phone: Optional[str] = None
     alternative_phone: Optional[str] = None
-    email: EmailStr
+    email: Optional[EmailStr] = None
     alternative_email: Optional[EmailStr] = None
 
 class Department(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    name: str
-    faculty_id: PyObjectId
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    name: Optional[str] = None
+    faculty_id: Optional[PyObjectId] = None
     description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Faculty(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    name: str
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    name: Optional[str] = None
     description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Programme(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    name: str
-    department_id: PyObjectId
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    name: Optional[str] = None
+    department_id: Optional[PyObjectId] = None
     description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class User(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    role: str  # E.g., 'Student', 'Company', 'Supervisor', 'Department', 'ILO'
-    email: EmailStr
-    password: str
-    first_name: str
-    last_name: str
-    profile_picture: Optional[HttpUrl] = None
-    contact_info: ContactInfo
-    address: Address
-    date_of_birth: datetime
-    gender: str
-    nationality: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    role: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    profile_picture: Optional[str] = None
+    contact_info: Optional[ContactInfo] = None
+    address: Optional[Address] = None
+    date_of_birth: Optional[datetime] = None
+    gender: Optional[str] = None
+    nationality: Optional[str] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class AcademicInfo(BaseModelWithConfig):
-    institution: str
-    degree: str
-    major: str
-    year_of_study: int
-    gpa: float
+    institution: Optional[str] = None
+    degree: Optional[str] = None
+    major: Optional[str] = None
+    year_of_study: Optional[int] = None
+    gpa: Optional[float] = None
 
 class Company(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    user_id: PyObjectId
-    company_name: str
-    industry: str
-    company_size: str
-    year_founded: int
-    website: HttpUrl
-    logo_url: Optional[HttpUrl] = None
-    description: str
-    address: Address
-    contact_info: ContactInfo
-    internships_posted: List[PyObjectId] = []  # List of internship IDs
-    company_supervisors: List[PyObjectId] = []  # List of company supervisor user IDs
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    user_id: Optional[PyObjectId] = None
+    company_name: Optional[str] = None
+    industry: Optional[str] = None
+    company_size: Optional[str] = None
+    year_founded: Optional[int] = None
+    website: Optional[str] = None
+    logo_url: Optional[str] = None
+    description: Optional[str] = None
+    address: Optional[Address] = None
+    contact_info: Optional[ContactInfo] = None
+    internships_posted: Optional[List[PyObjectId]] = None
+    company_supervisors: Optional[List[PyObjectId]] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Internship(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    company_id: PyObjectId
-    title: str
-    description: str
-    responsibilities: List[str]
-    requirements: List[str]
-    location: Address
-    industry: str
-    internship_type: str
-    duration: str
-    start_date: datetime
-    end_date: datetime
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    company_id: Optional[PyObjectId] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    responsibilities: Optional[List[str]] = None
+    requirements: Optional[List[str]] = None
+    location: Optional[Address] = None
+    industry: Optional[str] = None
+    internship_type: Optional[str] = None
+    duration: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     stipend: Optional[float] = None
-    application_deadline: datetime
-    max_applications: int
-    status: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    application_deadline: Optional[datetime] = None
+    max_applications: Optional[int] = None
+    status: Optional[str] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Application(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    student_id: PyObjectId
-    internship_id: PyObjectId
-    status: str  # E.g., 'Applied', 'Accepted', 'Rejected', 'Withdrawn'
-    application_date: datetime
-    cover_letter: str
-    resume_url: HttpUrl
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    student_id: Optional[PyObjectId] = None
+    internship_id: Optional[PyObjectId] = None
+    status: Optional[str] = None
+    application_date: Optional[datetime] = None
+    cover_letter: Optional[str] = None
+    resume_url: Optional[str] = None
     acceptance_date: Optional[datetime] = None
     rejection_date: Optional[datetime] = None
     withdrawal_date: Optional[datetime] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class EvaluationCriteria(BaseModelWithConfig):
-    criterion: str
-    score: float
-    max_score: float
-    weight: float
+    criterion: Optional[str] = None
+    score: Optional[float] = None
+    max_score: Optional[float] = None
+    weight: Optional[float] = None
 
 class Evaluation(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    application_id: PyObjectId
-    supervisor_id: PyObjectId
-    evaluation_type: str  # E.g., 'Midterm', 'Final'
-    evaluation_date: datetime
-    criteria: List[EvaluationCriteria]
-    total_score: float
-    max_total_score: float
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    application_id: Optional[PyObjectId] = None
+    supervisor_id: Optional[PyObjectId] = None
+    evaluation_type: Optional[str] = None
+    evaluation_date: Optional[datetime] = None
+    criteria: Optional[List[EvaluationCriteria]] = None
+    total_score: Optional[float] = None
+    max_total_score: Optional[float] = None
     comments: Optional[str] = None
-    strengths: List[str] = []
-    areas_for_improvement: List[str] = []
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    strengths: Optional[List[str]] = None
+    areas_for_improvement: Optional[List[str]] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Notification(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    user_id: PyObjectId
-    title: str
-    description: str
-    notification_type: str  # E.g., 'Application Status', 'Reminder'
-    picture_url: Optional[HttpUrl] = None
-    link: Optional[HttpUrl] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    read: bool = False
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    user_id: Optional[PyObjectId] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    notification_type: Optional[str] = None
+    picture_url: Optional[str] = None
+    link: Optional[str] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    read: Optional[bool] = False
     read_at: Optional[datetime] = None
 
 class VisitLocation(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    supervisor_id: PyObjectId
-    student_id: PyObjectId
-    internship_id: PyObjectId
-    company_id: PyObjectId
-    source_location: Address
-    destination_location: Address
-    visit_date: datetime
-    status: str  # E.g., 'Completed', 'Pending'
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    supervisor_id: Optional[PyObjectId] = None
+    student_id: Optional[PyObjectId] = None
+    internship_id: Optional[PyObjectId] = None
+    company_id: Optional[PyObjectId] = None
+    source_location: Optional[Address] = None
+    destination_location: Optional[Address] = None
+    visit_date: Optional[datetime] = None
+    status: Optional[str] = None
     notes: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class AppCredentials(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    app_id: str
-    app_key: str
-    app_name: str
-    description: str
-    created_by: PyObjectId
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    app_id: Optional[str] = None
+    app_key: Optional[str] = None
+    app_name: Optional[str] = None
+    description: Optional[str] = None
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     last_used: Optional[datetime] = None
-    is_active: bool = True
+    is_active: Optional[bool] = True
 
 class LogBookEntry(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    student_id: PyObjectId
-    internship_id: PyObjectId
-    date: datetime
-    activities: List[str]
-    learning_outcomes: List[str]
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    student_id: Optional[PyObjectId] = None
+    internship_id: Optional[PyObjectId] = None
+    date: Optional[datetime] = None
+    activities: Optional[List[str]] = None
+    learning_outcomes: Optional[List[str]] = None
     challenges: Optional[str] = None
-    hours_worked: float
-    status: str  # E.g., 'Submitted', 'Reviewed'
+    hours_worked: Optional[float] = None
+    status: Optional[str] = None
     supervisor_comments: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class MonthlySummary(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    student_id: PyObjectId
-    internship_id: PyObjectId
-    month: str  # Format: 'YYYY-MM'
-    summary: str
-    key_learnings: List[str]
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    student_id: Optional[PyObjectId] = None
+    internship_id: Optional[PyObjectId] = None
+    month: Optional[str] = None
+    summary: Optional[str] = None
+    key_learnings: Optional[List[str]] = None
     challenges: Optional[str] = None
-    goals_for_next_month: List[str]
-    status: str  # E.g., 'Submitted', 'Reviewed'
+    goals_for_next_month: Optional[List[str]] = None
+    status: Optional[str] = None
     supervisor_comments: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class FinalAssessment(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    student_id: PyObjectId
-    internship_id: PyObjectId
-    assessment_date: datetime
-    final_report_url: HttpUrl
-    overall_performance: str  # E.g., 'Excellent', 'Good', 'Satisfactory', 'Needs Improvement'
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    student_id: Optional[PyObjectId] = None
+    internship_id: Optional[PyObjectId] = None
+    assessment_date: Optional[datetime] = None
+    final_report_url: Optional[HttpUrl] = None
+    overall_performance: Optional[str] = None
     final_grade: Optional[float] = None
     supervisor_comments: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class AttachmentReport(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    student_id: PyObjectId
-    internship_id: PyObjectId
-    submission_date: datetime
-    report_url: HttpUrl
-    executive_summary: str
-    activities_summary: str
-    learnings: List[str]
-    challenges: List[str]
-    recommendations: List[str]
-    status: str  # E.g., 'Submitted', 'Reviewed', 'Approved', 'Rejected'
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    student_id: Optional[PyObjectId] = None
+    internship_id: Optional[PyObjectId] = None
+    submission_date: Optional[datetime] = None
+    report_url: Optional[str] = None
+    executive_summary: Optional[str] = None
+    activities_summary: Optional[str] = None
+    learnings: Optional[List[str]] = None
+    challenges: Optional[List[str]] = None
+    recommendations: Optional[List[str]] = None
+    status: Optional[str] = None
     department_comments: Optional[str] = None
     final_grade: Optional[float] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Token(BaseModelWithConfig):
-    access_token: str
-    token_type: str
-    expires_at: datetime
+    access_token: Optional[str] = None
+    token_type: Optional[str] = None
+    expires_at: Optional[datetime] = None
 
 class SchoolSupervisor(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    user_id: PyObjectId
-    department_id: PyObjectId
-    position: str
-    assigned_students: List[PyObjectId] = []  # List of student IDs
-    qualifications: List[str] = []
-    areas_of_expertise: List[str] = []
-    zone_id: PyObjectId  # Associate supervisor with a zone
-    area_id: Optional[PyObjectId] = None  # Associate supervisor with an area (subzone)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    user_id: Optional[PyObjectId] = None
+    department_id: Optional[PyObjectId] = None
+    position: Optional[str] = None
+    assigned_students: Optional[List[PyObjectId]] = None
+    qualifications: Optional[List[str]] = None
+    areas_of_expertise: Optional[List[str]] = None
+    zone_id: Optional[PyObjectId] = None
+    area_id: Optional[PyObjectId] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Student(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    user_id: PyObjectId
-    registration_number: str
-    academic_info: AcademicInfo
-    resume_url: Optional[HttpUrl] = None
-    skills: List[str] = []
-    interests: List[str] = []
-    homeTown: str
-    homeTown_GPS_Address: str
-    internships: List[PyObjectId] = []  # List of internship IDs
-    projects: List[Dict[str, Any]] = []
-    department_id: PyObjectId
-    programme_id: PyObjectId
-    zone_id: PyObjectId  # Associate student with a zone
-    area_id: Optional[PyObjectId] = None  # Associate student with an area (subzone)
-    current_location: Optional[Coordinate] = None  # Real-time location
-    assigned_supervisor: Optional[PyObjectId] = None  # Reference to SchoolSupervisor
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    user_id: Optional[PyObjectId] = None
+    registration_number: Optional[str] = None
+    academic_info: Optional[AcademicInfo] = None
+    resume_url: Optional[str] = None
+    skills: Optional[List[str]] = None
+    interests: Optional[List[str]] = None
+    homeTown: Optional[str] = None
+    homeTown_GPS_Address: Optional[str] = None
+    internships: Optional[List[PyObjectId]] = None
+    projects: Optional[List[Dict[str, Any]]] = None
+    department_id: Optional[PyObjectId] = None
+    programme_id: Optional[PyObjectId] = None
+    zone_id: Optional[PyObjectId] = None
+    area_id: Optional[PyObjectId] = None
+    current_location: Optional[Coordinate] = None
+    assigned_supervisor: Optional[PyObjectId] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class ChatMessage(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    sender_id: PyObjectId
-    receiver_id: PyObjectId
-    content: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    read: bool = False
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    sender_id: Optional[PyObjectId] = None
+    receiver_id: Optional[PyObjectId] = None
+    content: Optional[str] = None
+    timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    read: Optional[bool] = False
     read_at: Optional[datetime] = None
 
 class ChatRoom(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    participants: List[PyObjectId]  # List of user IDs (can include students and supervisors)
-    messages: List[PyObjectId]  # List of message IDs
-    room_type: str  # 'student-supervisor', 'zone', or 'area'
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    participants: Optional[List[PyObjectId]] = None
+    messages: Optional[List[PyObjectId]] = None
+    room_type: Optional[str] = None
     zone_id: Optional[PyObjectId] = None
     area_id: Optional[PyObjectId] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
 class WhiteList(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    company_id: PyObjectId
-    internship_id: PyObjectId
-    comments: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    company_id: Optional[PyObjectId] = None
+    internship_id: Optional[PyObjectId] = None
+    comments: Optional[str] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Rating(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    student_id: PyObjectId
-    company_id: PyObjectId
-    internship_id: PyObjectId
-    rating_score: float = Field(..., ge=0, le=5)  # Rating from 0 to 5
-    comments: str
-    rating_date: datetime = Field(default_factory=datetime.utcnow)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    student_id: Optional[PyObjectId] = None
+    company_id: Optional[PyObjectId] = None
+    internship_id: Optional[PyObjectId] = None
+    rating_score: Optional[float] = Field(None, ge=0, le=5)
+    comments: Optional[str] = None
+    rating_date: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class Resource(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    name: str
-    description: str
-    resource_type: str  # E.g., 'Video', 'Document', 'Audio', 'Link'
-    url: HttpUrl
-    uploaded_by: PyObjectId  # User ID of the ILO who uploaded the resource
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    resource_type: Optional[str] = None
+    url: Optional[str] = None
+    uploaded_by: Optional[PyObjectId] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class AssumptionOfDuty(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    student_id: PyObjectId
-    internship_id: PyObjectId
-    file_path: HttpUrl
-    submission_date: datetime
-    status: str = "Submitted"  # E.g., 'Submitted', 'Approved', 'Rejected'
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    student_id: Optional[PyObjectId] = None
+    internship_id: Optional[PyObjectId] = None
+    file_path: Optional[str] = None
+    submission_date: Optional[datetime] = None
+    status: Optional[str] = "Submitted"
     reviewer_id: Optional[PyObjectId] = None
     review_date: Optional[datetime] = None
     comments: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class SupervisorDistribution(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    zone_id: PyObjectId
-    area_id: PyObjectId
-    supervisor_id: PyObjectId
-    assigned_students: List[PyObjectId]
-    total_students: int
-    correlation_score: float
-    supervision_time: float
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    zone_id: Optional[PyObjectId] = None
+    area_id: Optional[PyObjectId] = None
+    supervisor_id: Optional[PyObjectId] = None
+    assigned_students: Optional[List[PyObjectId]] = None
+    total_students: Optional[int] = None
+    correlation_score: Optional[float] = None
+    supervision_time: Optional[float] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class DistributionRun(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    run_date: datetime = Field(default_factory=datetime.utcnow)
-    total_supervisors: int
-    total_students: int
-    distribution_results: List[PyObjectId]  # List of SupervisorDistribution IDs
-    status: str  # E.g., 'Completed', 'Failed', 'In Progress'
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    run_date: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    total_supervisors: Optional[int] = None
+    total_students: Optional[int] = None
+    distribution_results: Optional[List[PyObjectId]] = None
+    status: Optional[str] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
 class SupervisorWorkload(BaseModelWithConfig):
-    id: Annotated[PyObjectId, Field(default_factory=PyObjectId, alias="_id")]
-    supervisor_id: PyObjectId
-    total_students: int
-    total_supervision_time: float
-    zones: List[PyObjectId]
-    areas: List[PyObjectId]
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
+    supervisor_id: Optional[PyObjectId] = None
+    total_students: Optional[int] = None
+    total_supervision_time: Optional[float] = None
+    zones: Optional[List[PyObjectId]] = None
+    areas: Optional[List[PyObjectId]] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
