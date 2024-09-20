@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
-from database.models import User, Student, SchoolSupervisor, Evaluation, Notification, VisitLocation, Token, LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport, ChatMessage, ChatRoom, ZoneChat
+from database.models import User, Student, SchoolSupervisor, Evaluation, Notification, VisitLocation, Token, LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport, ChatMessage, ChatRoom
 from services import service
 from middleware.log import log_middleware
 from middleware.auth import auth_middleware
@@ -51,8 +51,8 @@ async def login_for_access_token(request: CustomLoginRequest):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    scopes = request.get_scope()
-    return service.create_access_token(data={"sub": user.email}, scopes=scopes)
+    access_token = service.create_access_token(data={"sub": user.email})
+    return access_token
 
 @app.post("/logout", summary="Logout and invalidate the current token")
 async def logout_user(current_user: User = Depends(service.get_current_active_supervisor)):
@@ -140,12 +140,9 @@ async def delete_final_report_endpoint(report_id: str, current_user: User = Depe
     return await service.delete_final_report(report_id)
 
 @app.post("/evaluations", summary="Create evaluation")
-async def create_evaluation_endpoint(student_id: str, evaluation_data: dict, current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.create_evaluation(str(current_user.id), student_id, evaluation_data)
+async def create_evaluation_endpoint(application_id: str, evaluation_data: dict, current_user: User = Depends(service.get_current_active_supervisor)):
+    return await service.create_evaluation(str(current_user.id), application_id, evaluation_data)
 
-@app.get("/evaluations/{student_id}/report", summary="Generate evaluation report")
-async def generate_evaluation_report_endpoint(student_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.generate_evaluation_report(str(current_user.id), student_id)
 
 @app.get("/zones/{zone_id}/supervisors", summary="Get supervisors in zone")
 async def get_supervisors_in_zone_endpoint(zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
@@ -158,18 +155,6 @@ async def get_assigned_students_endpoint(supervisor_id: str, current_user: User 
 @app.get("/supervisors/{supervisor_id}/workload", summary="Get supervisor workload")
 async def get_supervisor_workload_endpoint(supervisor_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
     return await service.get_supervisor_workload(supervisor_id)
-
-@app.get("/zones/{zone_id}/chat", summary="Get zone chat")
-async def get_zone_chat_endpoint(zone_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.get_zone_chat(zone_id)
-
-@app.post("/zones/{zone_id}/chat/message", summary="Add message to zone chat")
-async def add_message_to_zone_chat_endpoint(zone_id: str, content: str, current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.add_message_to_zone_chat(zone_id, str(current_user.id), content)
-
-@app.get("/zones/{zone_id}/chat/messages", summary="Get zone chat messages")
-async def get_zone_chat_messages_endpoint(zone_id: str, limit: int = 50, skip: int = 0, current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.get_zone_chat_messages(zone_id, limit, skip)
 
 @app.get("/", summary="Root endpoint")
 async def root():

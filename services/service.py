@@ -9,7 +9,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from geopy.distance import geodesic
 from database.models import (
     PyObjectId, Rating, User, Student, SchoolSupervisor, Evaluation, Notification, VisitLocation, AppCredentials, Token,
-    LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport, WhiteList, Zone, Area, ChatMessage, ChatRoom, ZoneChat
+    LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport, WhiteList, Zone, Area, ChatMessage, ChatRoom,
+    Company, Internship, Application, SupervisorDistribution, DistributionRun, SupervisorWorkload,
+    ChatRoom
+
 )
 from database.config import MONGODB_URI, DATABASE_NAME, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_DAYS
 
@@ -49,12 +52,15 @@ async def authenticate_user(email: str, password: str):
         return False
     return user
 
-def create_access_token(data: dict, scopes: str = "R-WR-R-R"):
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "scope": scopes})
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return Token(access_token=encoded_jwt, token_type="bearer", expires_at=expire, scope=scopes)
+    return Token(access_token=encoded_jwt, token_type="bearer", expires_at=expire)
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -101,7 +107,6 @@ async def get_supervisor_dashboard(supervisor_id: str):
     notifications = await db.notifications.find({"user_id": ObjectId(supervisor_id)}).to_list(None)
 
     return {
-        "location": supervisor["location"],
         "total_students": total_students,
         "completed_supervisions": completed_supervisions,
         "pending_supervisions": pending_supervisions,
@@ -163,8 +168,8 @@ async def is_student_at_company(student_id: str, company_id: str, max_distance: 
     if not student.get("current_location") or not company.get("address"):
         return False
     
-    student_location = (student["current_location"]["latitude"], student["current_location"]["longitude"])
-    company_location = (company["address"]["latitude"], company["address"]["longitude"])
+    student_location = (student["current_location"].latitude, student["current_location"].longitude)
+    company_location = (company["address"].coordinate.latitude, company["address"].coordinate.longitude)
     
     distance = geodesic(student_location, company_location).meters
     return distance <= max_distance
@@ -304,11 +309,11 @@ async def delete_final_report(report_id: str):
         raise HTTPException(status_code=404, detail="Final report not found")
     return {"message": "Final report deleted successfully"}
 
-# Evaluations
-async def create_evaluation(supervisor_id: str, student_id: str, evaluation_data: dict):
+
+async def create_evaluation(supervisor_id: str, application_id: str, evaluation_data: dict):
     evaluation = Evaluation(
         supervisor_id=ObjectId(supervisor_id),
-        application_id=ObjectId(evaluation_data["application_id"]),
+        application_id=ObjectId(application_id),
         evaluation_type=evaluation_data["evaluation_type"],
         evaluation_date=datetime.utcnow(),
         criteria=evaluation_data["criteria"],
@@ -322,66 +327,43 @@ async def create_evaluation(supervisor_id: str, student_id: str, evaluation_data
     return str(result.inserted_id)
 
 
-async def generate_evaluation_report(supervisor_id: str, student_id: str):
-    evaluations = await db.evaluations.find({
-        "supervisor_id": ObjectId(supervisor_id),
-        "student_id": ObjectId(student_id)
-    }).to_list(None)
-    
-    if not evaluations:
-        raise HTTPException(status_code=404, detail="No evaluations found for this student")
-    
-    report = {
-        "student_id": student_id,
-        "supervisor_id": supervisor_id,
-        "evaluations": evaluations,
-        "generated_at": datetime.utcnow()
-    }
-    
-    result = await db.evaluation_reports.insert_one(report)
-    return str(result.inserted_id)
-
 
 async def get_supervisors_in_zone(zone_id: str):
     supervisors = await db.school_supervisors.find({"zone_id": ObjectId(zone_id)}).to_list(None)
     return supervisors
 
-# Zone Management
 async def assign_area_and_students_to_supervisor(zone_leader: User, zone_id: str, area_data: dict, supervisor_id: str):
-    # Check if the zone leader is authorized
     zone = await db.zones.find_one({"_id": ObjectId(zone_id)})
-    if zone.zone_leader != zone_leader.id:
+    if not zone or str(zone.zone_leader) != str(zone_leader.id):
         raise HTTPException(status_code=403, detail="Not authorized to assign areas")
     
-    # Check if the Supervisor is part of the Zone
     supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id), "zone_id": ObjectId(zone_id)})
     if not supervisor:
         raise HTTPException(status_code=400, detail="Supervisor is not part of this Zone")
     
-    new_area = Area(**area_data)
-    new_area.source_location = supervisor_id
-    new_area.destination_locations = [supervisor_id]
-    result = await db.areas.insert_one(new_area.dict())
+    new_area = Area(**area_data, zone_id=ObjectId(zone_id), supervisors=[ObjectId(supervisor_id)])
+    result = await db.areas.insert_one(new_area.dict(by_alias=True))
     area_id = str(result.inserted_id)
     
-    # Assign students to the supervisor
     students = await db.students.find({
-        "internship.company_id": {"$in": new_area.destination_locations},
-        "_id": {"$nin": new_area.assigned_students}
-    }).to_list(None)
+        "zone_id": ObjectId(zone_id),
+        "area_id": None,
+        "assigned_supervisor": None
+    }).limit(10).to_list(None)  # Limit to 10 students for example
     
     if students:
         student_ids = [student["_id"] for student in students]
-        object_student_ids = [ObjectId(id) for id in student_ids]
-        result = await db.school_supervisors.update_one(
+        await db.school_supervisors.update_one(
             {"_id": ObjectId(supervisor_id)},
-            {"$addToSet": {"assigned_students": {"$each": object_student_ids}}}
+            {"$push": {"assigned_students": {"$each": student_ids}}}
         )
-        if result.modified_count == 0:
-            raise HTTPException(status_code=404, detail="Supervisor not found")
+        await db.students.update_many(
+            {"_id": {"$in": student_ids}},
+            {"$set": {"area_id": ObjectId(area_id), "assigned_supervisor": ObjectId(supervisor_id)}}
+        )
         await db.areas.update_one(
             {"_id": ObjectId(area_id)},
-            {"$addToSet": {"assigned_students": {"$each": object_student_ids}}}
+            {"$push": {"students": {"$each": student_ids}}}
         )
         return {
             "message": "Area assigned and students assigned to supervisor successfully",
@@ -390,7 +372,7 @@ async def assign_area_and_students_to_supervisor(zone_leader: User, zone_id: str
         }
     else:
         return {
-            "message": "Area assigned successfully, but no new students found in the assigned area",
+            "message": "Area assigned successfully, but no new students found to assign",
             "area_id": area_id,
             "assigned_students": 0
         }
@@ -402,107 +384,34 @@ async def get_assigned_students(supervisor_id: str):
     students = await db.students.find({"_id": {"$in": supervisor["assigned_students"]}}).to_list(None)
     return students
 
-# Workload Management
 async def get_supervisor_workload(supervisor_id: str):
     supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
-    assigned_students_count = len(supervisor["assigned_students"])
-    completed_evaluations = await db.evaluations.count_documents({"supervisor_id": ObjectId(supervisor_id)})
-    return {
-        "assigned_students": assigned_students_count,
-        "completed_evaluations": completed_evaluations
-    }
+    
+    workload = await db.supervisor_workloads.find_one({"supervisor_id": ObjectId(supervisor_id)})
+    if not workload:
+        workload = SupervisorWorkload(
+            supervisor_id=ObjectId(supervisor_id),
+            total_students=len(supervisor["assigned_students"]),
+            total_supervision_time=0,
+            zones=[supervisor["zone_id"]],
+            areas=[supervisor["area_id"]] if supervisor.get("area_id") else []
+        )
+        await db.supervisor_workloads.insert_one(workload.dict(by_alias=True))
+    
+    return workload
 
-async def create_zone_chat_for_new_zone(zone: Zone):
-    zone_chat = ZoneChat(
-        zone_id=zone.id,
-        participants=[supervisor.id for supervisor in zone.supervisors],
-        messages=[],
-        created_at=zone.created_at,
-        updated_at=zone.updated_at
-    )
-    result = await db.zone_chats.insert_one(zone_chat.dict())
-    zone_chat.id = result.inserted_id
-    return zone_chat
 
-# Chat functionality
-async def create_chat_room(participants: List[PyObjectId]) -> ChatRoom:
-    chat_room = ChatRoom(
-        participants=participants,
-        messages=[],
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
-    )
-    result = await db.chat_rooms.insert_one(chat_room.dict())
-    chat_room.id = result.inserted_id
-    return chat_room
 
-async def send_chat_message(chat_room_id: str, sender_id: str, content: str) -> ChatMessage:
-    chat_message = ChatMessage(
-        sender_id=ObjectId(sender_id),
-        receiver_id=None,  # Set receiver_id to None for group chats
-        content=content,
-        timestamp=datetime.utcnow()
-    )
-    result = await db.chat_messages.insert_one(chat_message.dict())
-    chat_message.id = result.inserted_id
-
-    # Update the chat room
-    await db.chat_rooms.update_one(
-        {"_id": ObjectId(chat_room_id)},
-        {"$push": {"messages": chat_message.id}, "$set": {"updated_at": datetime.utcnow()}}
-    )
-
-    return chat_message
-
-async def get_chat_history(chat_room_id: str) -> List[ChatMessage]:
-    chat_room = await db.chat_rooms.find_one({"_id": ObjectId(chat_room_id)})
-    if not chat_room:
-        raise HTTPException(status_code=404, detail="Chat room not found")
-
-    chat_messages = await db.chat_messages.find({"_id": {"$in": chat_room["messages"]}}).to_list(None)
-    return chat_messages
-
-async def mark_chat_message_as_read(chat_room_id: str, message_id: str, user_id: str):
-    result = await db.chat_messages.update_one(
-        {"_id": ObjectId(message_id), "receiver_id": ObjectId(user_id)},
-        {"$set": {"read": True, "read_at": datetime.utcnow()}}
-    )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Chat message not found")
-    return True
-
-async def get_unread_notifications(user_id: str) -> List[Notification]:
-    notifications = await db.notifications.find({"user_id": ObjectId(user_id), "read": False}).to_list(None)
-    return notifications
-
-async def mark_notification_as_read(notification_id: str, user_id: str):
-    result = await db.notifications.update_one(
-        {"_id": ObjectId(notification_id), "user_id": ObjectId(user_id)},
-        {"$set": {"read": True, "read_at": datetime.utcnow()}}
-    )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    return True
-
-# Rating and Whitelist
 async def create_rating(rating_data: dict) -> Rating:
     rating = Rating(**rating_data)
-    result = await db.ratings.insert_one(rating.dict())
+    result = await db.ratings.insert_one(rating.dict(by_alias=True))
     rating.id = result.inserted_id
     return rating
 
-async def get_ratings_for_student(student_id: str) -> List[Rating]:
-    ratings = await db.ratings.find({"student_id": ObjectId(student_id)}).to_list(None)
-    return ratings
-
 async def create_whitelist(whitelist_data: dict) -> WhiteList:
     whitelist = WhiteList(**whitelist_data)
-    result = await db.whitelists.insert_one(whitelist.dict())
+    result = await db.whitelists.insert_one(whitelist.dict(by_alias=True))
     whitelist.id = result.inserted_id
     return whitelist
-
-async def get_whitelisted_internships(company_id: str) -> List[WhiteList]:
-    whitelisted_internships = await db.whitelists.find({"company_id": ObjectId(company_id)}).to_list(None)
-    return whitelisted_internships
