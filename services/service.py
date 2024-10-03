@@ -99,38 +99,73 @@ async def get_supervisor_dashboard(supervisor_id: str):
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
+    # Get basic supervision stats
     total_students = len(supervisor["assigned_students"])
     completed_supervisions = await db.evaluations.count_documents({"supervisor_id": ObjectId(supervisor_id)})
     pending_supervisions = total_students - completed_supervisions
 
+    # Get students details
     students = await db.students.find({"_id": {"$in": supervisor["assigned_students"]}}).to_list(None)
-    notifications = await db.notifications.find({"user_id": ObjectId(supervisor_id)}).to_list(None)
+    
+    # Get notifications
+    notifications = await db.notifications.find(
+        {"user_id": ObjectId(supervisor_id)}
+    ).sort("created_at", -1).limit(5).to_list(None)
+
+    # Find the area the supervisor is posted to
+    zone = None
+    area = None
+    if supervisor.get("zone_id"):
+        zone = await db.zones.find_one({"_id": supervisor["zone_id"]})
+    if supervisor.get("area_id"):
+        area = await db.areas.find_one({"_id": supervisor["area_id"]})
+
+    location_posted = {
+        "zone": zone["name"] if zone else None,
+        "area": area["name"] if area else None
+    }
+
+    # Get recent activities
+    recent_activities = []
+    
+    # Check recent evaluations
+    recent_evals = await db.evaluations.find(
+        {"supervisor_id": ObjectId(supervisor_id)}
+    ).sort("created_at", -1).limit(3).to_list(None)
+    for eval in recent_evals:
+        student = await db.students.find_one({"_id": eval["application_id"]})
+        if student:
+            recent_activities.append({
+                "type": "evaluation",
+                "description": f"Assessed student {student.get('first_name', '')} {student.get('last_name', '')}",
+                "timestamp": eval["created_at"]
+            })
+
+    # Check recent visit locations
+    recent_visits = await db.visit_locations.find(
+        {"supervisor_id": ObjectId(supervisor_id)}
+    ).sort("visit_date", -1).limit(3).to_list(None)
+    for visit in recent_visits:
+        student = await db.students.find_one({"_id": visit["student_id"]})
+        if student:
+            recent_activities.append({
+                "type": "visit",
+                "description": f"Visited student {student.get('first_name', '')} {student.get('last_name', '')}",
+                "timestamp": visit["visit_date"]
+            })
+
+    # Sort all activities by timestamp
+    recent_activities.sort(key=lambda x: x["timestamp"], reverse=True)
 
     return {
         "total_students": total_students,
         "completed_supervisions": completed_supervisions,
         "pending_supervisions": pending_supervisions,
         "students": students,
-        "notifications": notifications
+        "notifications": notifications,
+        "area_posted_to": location_posted,
+        "recent_activities": recent_activities[:10]  # Limit to 5 most recent activities
     }
-
-# Student Management
-async def search_students(supervisor_id: str, query: str):
-    supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
-    if not supervisor:
-        raise HTTPException(status_code=404, detail="Supervisor not found")
-
-    students = await db.students.find({
-        "_id": {"$in": supervisor["assigned_students"]},
-        "$or": [
-            {"first_name": {"$regex": query, "$options": "i"}},
-            {"last_name": {"$regex": query, "$options": "i"}},
-            {"contact_info.phone": {"$regex": query, "$options": "i"}},
-            {"academic_info.institution": {"$regex": query, "$options": "i"}}
-        ]
-    }).to_list(None)
-    return students
-
 async def get_student_list(supervisor_id: str, status: Optional[str] = None):
     supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
     if not supervisor:
@@ -328,10 +363,6 @@ async def create_evaluation(supervisor_id: str, application_id: str, evaluation_
 
 
 
-async def get_supervisors_in_zone(zone_id: str):
-    supervisors = await db.school_supervisors.find({"zone_id": ObjectId(zone_id)}).to_list(None)
-    return supervisors
-
 async def assign_area_and_students_to_supervisor(zone_leader: User, zone_id: str, area_data: dict, supervisor_id: str):
     zone = await db.zones.find_one({"_id": ObjectId(zone_id)})
     if not zone or str(zone.zone_leader) != str(zone_leader.id):
@@ -415,3 +446,70 @@ async def create_whitelist(whitelist_data: dict) -> WhiteList:
     result = await db.whitelists.insert_one(whitelist.dict(by_alias=True))
     whitelist.id = result.inserted_id
     return whitelist
+
+async def create_supervisor(supervisor_data: dict):
+    # Check if email already exists
+    existing_user = await db.users.find_one({"email": supervisor_data["email"]})
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    # Create user document
+    user_data = {
+        "email": supervisor_data["email"],
+        "password": get_password_hash(supervisor_data["password"]),
+        "role": "supervisor-school",
+        "first_name": supervisor_data["first_name"],
+        "last_name": supervisor_data["last_name"],
+        "contact_info": supervisor_data.get("contact_info"),
+        "address": supervisor_data.get("address"),
+        "profile_picture": supervisor_data.get("profile_picture"),
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    user_result = await db.users.insert_one(user_data)
+    
+    # Create supervisor document
+    supervisor_specific_data = {
+        "user_id": user_result.inserted_id,
+        "department_id": ObjectId(supervisor_data["department_id"]),
+        "position": supervisor_data.get("position"),
+        "qualifications": supervisor_data.get("qualifications", []),
+        "areas_of_expertise": supervisor_data.get("areas_of_expertise", []),
+        "zone_id": ObjectId(supervisor_data["zone_id"]) if supervisor_data.get("zone_id") else None,
+        "area_id": ObjectId(supervisor_data["area_id"]) if supervisor_data.get("area_id") else None,
+        "assigned_students": [],
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    supervisor_result = await db.school_supervisors.insert_one(supervisor_specific_data)
+    
+    # Create notification for new supervisor
+    notification_data = {
+        "user_id": user_result.inserted_id,
+        "title": "Welcome to the Supervision System",
+        "description": "Your supervisor account has been created successfully.",
+        "notification_type": "welcome",
+        "created_at": datetime.utcnow()
+    }
+    await db.notifications.insert_one(notification_data)
+    
+    # Fetch and return the complete supervisor profile
+    supervisor = await db.school_supervisors.find_one({"_id": supervisor_result.inserted_id})
+    user = await db.users.find_one({"_id": user_result.inserted_id})
+    
+    return {
+        "supervisor_id": str(supervisor_result.inserted_id),
+        "user_id": str(user_result.inserted_id),
+        "email": user["email"],
+        "first_name": user["first_name"],
+        "last_name": user["last_name"],
+        "role": user["role"],
+        "department_id": str(supervisor["department_id"]),
+        "zone_id": str(supervisor["zone_id"]) if supervisor.get("zone_id") else None,
+        "area_id": str(supervisor["area_id"]) if supervisor.get("area_id") else None
+    }
