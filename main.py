@@ -8,7 +8,7 @@ from middleware.log import log_middleware
 from middleware.auth import auth_middleware
 from middleware.requestValidity import request_validity_middleware
 from database.config import get_database
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 app = FastAPI(title="Supervisor API", description="API for managing supervisor activities in the internship system")
 
