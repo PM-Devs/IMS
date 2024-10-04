@@ -35,11 +35,30 @@ async def verify_app_credentials(app_id: str, app_key: str) -> bool:
         return True
     return False
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    # Combine password and key
+    rounds= 1000
+    key="TTU_IMS"
+    combined = password + key
+    hashed = combined
+    
+    # Perform multiple rounds of a simple mixing function
+    for _ in range(rounds):
+        new_hash = ""
+        for i in range(len(hashed)):
+            char = hashed[i]
+            # Simple mixing: rotate ASCII value and wrap around
+            new_char = chr((ord(char) + i + len(hashed)) % 128)
+            new_hash += new_char
+        hashed = new_hash
+    
+    # Convert to a hexadecimal string
+    return ''.join(format(ord(c), '02x') for c in hashed)
+
+def verify_password(plain_password, hashed_password):
+    return get_password_hash(plain_password) == hashed_password
+
+
 
 async def get_user(email: str):
     user_dict = await db.users.find_one({"email": email})
@@ -178,14 +197,6 @@ async def get_student_list(supervisor_id: str, status: Optional[str] = None):
     students = await db.students.find(query).to_list(None)
     return students
 
-async def update_student_status(student_id: str, status: str):
-    result = await db.students.update_one(
-        {"_id": ObjectId(student_id)},
-        {"$set": {"status": status}}
-    )
-    if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Student not found")
-    return {"message": "Student status updated successfully"}
 
 async def get_student_location(student_id: str):
     student = await db.students.find_one({"_id": ObjectId(student_id)})
@@ -214,20 +225,6 @@ async def get_visit_locations(supervisor_id: str):
     visit_locations = await db.visit_locations.find({"supervisor_id": ObjectId(supervisor_id)}).to_list(None)
     return visit_locations
 
-async def create_visit_location(supervisor_id: str, visit_data: dict):
-    visit_location = VisitLocation(
-        supervisor_id=ObjectId(supervisor_id),
-        student_id=ObjectId(visit_data["student_id"]),
-        internship_id=ObjectId(visit_data["internship_id"]),
-        company_id=ObjectId(visit_data["company_id"]),
-        source_location=visit_data["source_location"],
-        destination_location=visit_data["destination_location"],
-        visit_date=visit_data["visit_date"],
-        status="Pending",
-        notes=visit_data.get("notes")
-    )
-    result = await db.visit_locations.insert_one(visit_location.dict(by_alias=True))
-    return str(result.inserted_id)
 
 async def update_visit_location(visit_location_id: str, visit_location: VisitLocation):
     result = await db.visit_locations.update_one(
@@ -362,52 +359,6 @@ async def create_evaluation(supervisor_id: str, application_id: str, evaluation_
     return str(result.inserted_id)
 
 
-
-async def assign_area_and_students_to_supervisor(zone_leader: User, zone_id: str, area_data: dict, supervisor_id: str):
-    zone = await db.zones.find_one({"_id": ObjectId(zone_id)})
-    if not zone or str(zone.zone_leader) != str(zone_leader.id):
-        raise HTTPException(status_code=403, detail="Not authorized to assign areas")
-    
-    supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id), "zone_id": ObjectId(zone_id)})
-    if not supervisor:
-        raise HTTPException(status_code=400, detail="Supervisor is not part of this Zone")
-    
-    new_area = Area(**area_data, zone_id=ObjectId(zone_id), supervisors=[ObjectId(supervisor_id)])
-    result = await db.areas.insert_one(new_area.dict(by_alias=True))
-    area_id = str(result.inserted_id)
-    
-    students = await db.students.find({
-        "zone_id": ObjectId(zone_id),
-        "area_id": None,
-        "assigned_supervisor": None
-    }).limit(10).to_list(None)  # Limit to 10 students for example
-    
-    if students:
-        student_ids = [student["_id"] for student in students]
-        await db.school_supervisors.update_one(
-            {"_id": ObjectId(supervisor_id)},
-            {"$push": {"assigned_students": {"$each": student_ids}}}
-        )
-        await db.students.update_many(
-            {"_id": {"$in": student_ids}},
-            {"$set": {"area_id": ObjectId(area_id), "assigned_supervisor": ObjectId(supervisor_id)}}
-        )
-        await db.areas.update_one(
-            {"_id": ObjectId(area_id)},
-            {"$push": {"students": {"$each": student_ids}}}
-        )
-        return {
-            "message": "Area assigned and students assigned to supervisor successfully",
-            "area_id": area_id,
-            "assigned_students": len(students)
-        }
-    else:
-        return {
-            "message": "Area assigned successfully, but no new students found to assign",
-            "area_id": area_id,
-            "assigned_students": 0
-        }
-
 async def get_assigned_students(supervisor_id: str):
     supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
     if not supervisor:
@@ -433,83 +384,3 @@ async def get_supervisor_workload(supervisor_id: str):
     
     return workload
 
-
-
-async def create_rating(rating_data: dict) -> Rating:
-    rating = Rating(**rating_data)
-    result = await db.ratings.insert_one(rating.dict(by_alias=True))
-    rating.id = result.inserted_id
-    return rating
-
-async def create_whitelist(whitelist_data: dict) -> WhiteList:
-    whitelist = WhiteList(**whitelist_data)
-    result = await db.whitelists.insert_one(whitelist.dict(by_alias=True))
-    whitelist.id = result.inserted_id
-    return whitelist
-
-async def create_supervisor(supervisor_data: dict):
-    # Check if email already exists
-    existing_user = await db.users.find_one({"email": supervisor_data["email"]})
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-    
-    # Create user document
-    user_data = {
-        "email": supervisor_data["email"],
-        "password": get_password_hash(supervisor_data["password"]),
-        "role": "supervisor-school",
-        "first_name": supervisor_data["first_name"],
-        "last_name": supervisor_data["last_name"],
-        "contact_info": supervisor_data.get("contact_info"),
-        "address": supervisor_data.get("address"),
-        "profile_picture": supervisor_data.get("profile_picture"),
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
-    }
-    
-    user_result = await db.users.insert_one(user_data)
-    
-    # Create supervisor document
-    supervisor_specific_data = {
-        "user_id": user_result.inserted_id,
-        "department_id": ObjectId(supervisor_data["department_id"]),
-        "position": supervisor_data.get("position"),
-        "qualifications": supervisor_data.get("qualifications", []),
-        "areas_of_expertise": supervisor_data.get("areas_of_expertise", []),
-        "zone_id": ObjectId(supervisor_data["zone_id"]) if supervisor_data.get("zone_id") else None,
-        "area_id": ObjectId(supervisor_data["area_id"]) if supervisor_data.get("area_id") else None,
-        "assigned_students": [],
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
-    }
-    
-    supervisor_result = await db.school_supervisors.insert_one(supervisor_specific_data)
-    
-    # Create notification for new supervisor
-    notification_data = {
-        "user_id": user_result.inserted_id,
-        "title": "Welcome to the Supervision System",
-        "description": "Your supervisor account has been created successfully.",
-        "notification_type": "welcome",
-        "created_at": datetime.utcnow()
-    }
-    await db.notifications.insert_one(notification_data)
-    
-    # Fetch and return the complete supervisor profile
-    supervisor = await db.school_supervisors.find_one({"_id": supervisor_result.inserted_id})
-    user = await db.users.find_one({"_id": user_result.inserted_id})
-    
-    return {
-        "supervisor_id": str(supervisor_result.inserted_id),
-        "user_id": str(user_result.inserted_id),
-        "email": user["email"],
-        "first_name": user["first_name"],
-        "last_name": user["last_name"],
-        "role": user["role"],
-        "department_id": str(supervisor["department_id"]),
-        "zone_id": str(supervisor["zone_id"]) if supervisor.get("zone_id") else None,
-        "area_id": str(supervisor["area_id"]) if supervisor.get("area_id") else None
-    }
