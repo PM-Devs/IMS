@@ -37,7 +37,7 @@ class CustomLoginRequest(BaseModel):
 
 @app.post("/login", response_model=Token, summary="Authenticate and obtain access token")
 async def login_for_access_token(request:Request,Login_request: CustomLoginRequest):
-    if request.grant_type != "password":
+    if Login_request.grant_type != "password":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid grant_type  Expected 'password'."
