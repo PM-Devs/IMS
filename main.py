@@ -26,41 +26,28 @@ app.middleware("http")(log_middleware)
 app.middleware("http")(auth_middleware)
 app.middleware("http")(request_validity_middleware)
 
-class SupervisorRegistration(BaseModel):
-    email: EmailStr
-    password: str
-    first_name: str
-    last_name: str
-    department_id: str
-    contact_info: Optional[dict]
-    address: Optional[dict]
-    position: Optional[str]
-    qualifications: Optional[List[str]]
-    areas_of_expertise: Optional[List[str]]
-    zone_id: Optional[str]
-    area_id: Optional[str]
 class CustomLoginRequest(BaseModel):
     grant_type: str
-    username: str
+    email: str
     password: str
     scope: Optional[str] = None
 
     def get_scope(self):
         return self.scope or "R-WR-R-R"
 
-@app.post("/login", response_model=Token, summary="Authenticate and obtain access token")
+@app.post("/supervisor/login", response_model=Token, summary="Authenticate and obtain access token")
 async def login_for_access_token(request: CustomLoginRequest):
     if request.grant_type != "password":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid grant_type. Expected 'password'."
+            detail="Invalid grant_type  Expected 'password'."
         )
     
-    user = await service.authenticate_user(request.username, request.password)
+    user = await service.authenticate_user(request.email, request.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect email or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -77,10 +64,6 @@ async def dashboard(current_user: User = Depends(service.get_current_active_supe
     return await service.get_supervisor_dashboard(str(current_user.id))
 
 
-@app.put("/students/{student_id}/status", summary="Update student status")
-async def update_student_status_endpoint(student_id: str, status: str, current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.update_student_status(student_id, status)
-
 @app.get("/students/{student_id}/location", summary="Get student's current location")
 async def get_student_location_endpoint(student_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
     return await service.get_student_location(student_id)
@@ -93,9 +76,6 @@ async def is_student_at_company_endpoint(student_id: str, company_id: str, max_d
 async def visit_locations(current_user: User = Depends(service.get_current_active_supervisor)):
     return await service.get_visit_locations(str(current_user.id))
 
-@app.post("/visit-locations", summary="Create a new visit location")
-async def create_visit_location_endpoint(visit_data: dict, current_user: User = Depends(service.get_current_active_supervisor)):
-    return await service.create_visit_location(str(current_user.id), visit_data)
 
 @app.put("/visit-locations/{visit_location_id}", summary="Update a visit location")
 async def update_visit_location_endpoint(visit_location_id: str, visit_location: VisitLocation, current_user: User = Depends(service.get_current_active_supervisor)):
@@ -157,39 +137,6 @@ async def get_assigned_students_endpoint(supervisor_id: str, current_user: User 
 @app.get("/supervisors/{supervisor_id}/workload", summary="Get supervisor workload")
 async def get_supervisor_workload_endpoint(supervisor_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
     return await service.get_supervisor_workload(supervisor_id)
-
-
-
-@app.post("/register/supervisor", 
-          summary="Register as a new supervisor", 
-          response_model=dict,
-          status_code=status.HTTP_201_CREATED)
-async def register_supervisor(registration_data: SupervisorRegistration):
-    """
-    Public endpoint for supervisor registration.
-    
-    Creates both a user account and a supervisor profile.
-    Requires email verification before the account is activated.
-    """
-    try:
-        # Create the supervisor through the service layer
-        result = await service.create_supervisor(registration_data.dict())
-        
-        # Send verification email
-        await service.send_verification_email(result["email"])
-        
-        return {
-            "message": "Supervisor registration successful. Please check your email for verification.",
-            "supervisor_id": result["supervisor_id"],
-            "email": result["email"]
-        }
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to register supervisor: {str(e)}"
-        )
 
 @app.get("/", summary="Root endpoint")
 async def root():
