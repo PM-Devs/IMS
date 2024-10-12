@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status,Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
@@ -35,15 +35,15 @@ class CustomLoginRequest(BaseModel):
     def get_scope(self):
         return self.scope or "R-WR-R-R"
 
-@app.post("/supervisor/login", response_model=Token, summary="Authenticate and obtain access token")
-async def login_for_access_token(request: CustomLoginRequest):
+@app.post("/login", response_model=Token, summary="Authenticate and obtain access token")
+async def login_for_access_token(request:Request,Login_request: CustomLoginRequest):
     if request.grant_type != "password":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid grant_type  Expected 'password'."
         )
     
-    user = await service.authenticate_user(request.email, request.password)
+    user = await service.authenticate_user(Login_request.email, Login_request.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
