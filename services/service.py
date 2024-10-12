@@ -100,7 +100,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return user
 
 async def get_current_active_supervisor(current_user: User = Depends(get_current_user)):
-    if current_user.role != "supervisor-school":
+    if current_user.role != "Supervisor-School-Base":
         raise HTTPException(status_code=400, detail="User is not a supervisor")
     return current_user
 
