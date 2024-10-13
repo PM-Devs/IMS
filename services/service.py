@@ -118,8 +118,9 @@ async def is_token_blacklisted(token: str):
 
 # Supervisor Dashboard
 async def get_supervisor_dashboard(supervisor_id: str):
-    supervisor = await db.school_supervisors.find_one({"user_id": ObjectId(supervisor_id)})
+    supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
     if not supervisor:
+        print("ID is : ",supervisor_id)
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
     # Get basic supervision stats
@@ -272,11 +273,11 @@ async def update_supervisor_profile(supervisor_id: str, profile_data: dict):
     return True
 
 async def delete_supervisor(supervisor_id: str):
-    supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
+    supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
-    result = await db.school_supervisors.delete_one({"_id": ObjectId(supervisor_id)})
+    result = await db.school_supervisors.delete_one({"user_id": supervisor_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
@@ -304,7 +305,7 @@ async def mark_logbook(supervisor_id: str, logbook_id: str, status: str, comment
 
 # Final Reports
 async def create_final_report(supervisor_id: str, student_id: str, report_data: dict):
-    supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
+    supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
