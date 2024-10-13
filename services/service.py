@@ -257,12 +257,12 @@ async def update_visit_status(visit_id: str, status: str):
 
 
 # Supervisor Profile function
-async def get_supervisor_profile(supervisor_id: str):
+async def get_supervisor_profile(supervisor_id):
     # Log the supervisor ID for debugging
     print(f"Looking for supervisor with user_id: {supervisor_id}")
     
     # Fetch supervisor using the supervisor_id (string)
-    supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
+    supervisor = await db.school_supervisors.find_one({"user_id": f"{supervisor_id}"})
     
     # If supervisor is not found, raise an HTTPException
     if not supervisor:
