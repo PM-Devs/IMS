@@ -118,7 +118,7 @@ async def is_token_blacklisted(token: str):
 
 # Supervisor Dashboard
 async def get_supervisor_dashboard(supervisor_id: str):
-    supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
+    supervisor = await db.school_supervisors.find_one({"user_id": ObjectId(supervisor_id)})
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
@@ -190,7 +190,7 @@ async def get_supervisor_dashboard(supervisor_id: str):
         "recent_activities": recent_activities[:10]  # Limit to 5 most recent activities
     }
 async def get_student_list(supervisor_id: str, status: Optional[str] = None):
-    supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
+    supervisor = await db.school_supervisors.find_one({"user_id": ObjectId(supervisor_id)})
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
@@ -203,7 +203,7 @@ async def get_student_list(supervisor_id: str, status: Optional[str] = None):
 
 
 async def get_student_location(student_id: str):
-    student = await db.students.find_one({"_id": ObjectId(student_id)})
+    student = await db.students.find_one({"user_id": ObjectId(student_id)})
     if not student or not student.get("current_location"):
         raise HTTPException(status_code=404, detail="Student location not found")
     return student["current_location"]
@@ -256,7 +256,7 @@ async def update_visit_status(visit_id: str, status: str):
 
 # Supervisor Profile
 async def get_supervisor_profile(supervisor_id: str):
-    supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
+    supervisor = await db.school_supervisors.find_one({"user_id": ObjectId(supervisor_id)})
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
     user = await db.users.find_one({"_id": supervisor["user_id"]})
