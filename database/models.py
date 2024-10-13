@@ -34,8 +34,6 @@ class BaseModelWithConfig(BaseModel):
         json_encoders={ObjectId: str},
         populate_by_name=True  # Allows population by alias
     )
-
-
 class Coordinate(BaseModelWithConfig):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
