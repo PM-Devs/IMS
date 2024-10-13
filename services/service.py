@@ -261,8 +261,12 @@ async def get_supervisor_profile(supervisor_id: str):
     print("ID is : ",supervisor_id)
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
-    user = await db.users.find_one({"_id": supervisor_id})
-    return {**supervisor, **user}
+    user = await db.users.find_one({"_id": ObjectId(supervisor_id)})
+    if supervisor and user:
+         return {**supervisor, **user}
+    else:
+         raise HTTPException(status_code=404, detail="Supervisor not found")
+
 
 async def update_supervisor_profile(supervisor_id: str, profile_data: dict):
     result = await db.school_supervisors.update_one(
