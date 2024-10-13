@@ -256,7 +256,7 @@ async def update_visit_status(visit_id: str, status: str):
 
 # Supervisor Profile
 async def get_supervisor_profile(supervisor_id: str):
-    supervisor = await db.school_supervisors.find_one({"user_id": ObjectId(supervisor_id)})
+    supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
     user = await db.users.find_one({"_id": supervisor["user_id"]})
