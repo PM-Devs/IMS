@@ -65,6 +65,7 @@ async def get_user(email: str):
         # Convert _id to id
     if user_dict and '_id' in user_dict:
         user_dict['id'] = str(user_dict.pop('_id')) 
+    print(user_dict)
     if user_dict:
         return User(**user_dict)
 
