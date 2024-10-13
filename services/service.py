@@ -62,6 +62,7 @@ def verify_password(plain_password, hashed_password):
 
 async def get_user(email: str):
     user_dict = await db.users.find_one({"email": email})
+    print("User dict:" ,user_dict)
     if user_dict:
         return User(**user_dict)
 
