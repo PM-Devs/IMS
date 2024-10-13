@@ -257,15 +257,16 @@ async def update_visit_status(visit_id: str, status: str):
 
 # Supervisor Profile
 async def get_supervisor_profile(supervisor_id: str):
-    supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
-    print("ID is : ",supervisor_id)
+    new_id=supervisor_id
+    supervisor = await db.school_supervisors.find_one({"user_id": new_id})
+    
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
-    user = await db.users.find_one({"_id": ObjectId(supervisor_id)})
+    user = await db.users.find_one({"_id": ObjectId(new_id)})
     if supervisor and user:
          return {**supervisor, **user}
     else:
-         raise HTTPException(status_code=404, detail="Supervisor not found")
+         raise HTTPException(status_code=405, detail="Supervisor not found")
 
 
 async def update_supervisor_profile(supervisor_id: str, profile_data: dict):
