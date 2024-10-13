@@ -266,7 +266,7 @@ async def get_supervisor_profile(supervisor_id: str):
     if supervisor and user:
          return {**supervisor, **user}
     else:
-         raise HTTPException(status_code=405, detail="Supervisor not found")
+         raise HTTPException(status_code=405, detail="User details for supervisor  not found")
 
 
 async def update_supervisor_profile(supervisor_id: str, profile_data: dict):
