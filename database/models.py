@@ -1,7 +1,7 @@
-from bson import ObjectId
 from pydantic import BaseModel, Field, EmailStr, HttpUrl, ConfigDict, GetCoreSchemaHandler
 from typing import Any, Dict, Optional, List, Annotated
 from datetime import datetime
+from bson import ObjectId
 from pydantic_core import core_schema
 
 class PyObjectId(ObjectId):
@@ -31,8 +31,10 @@ class PyObjectId(ObjectId):
 class BaseModelWithConfig(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
-        json_encoders={ObjectId: str}
+        json_encoders={ObjectId: str},
+        populate_by_name=True  # Allows population by alias
     )
+
 
 class Coordinate(BaseModelWithConfig):
     latitude: Optional[float] = None
