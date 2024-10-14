@@ -91,7 +91,7 @@ async def update_visit_status_endpoint(visit_id: str, status: str, current_user:
 
 @app.get("/profile", summary="Get supervisor profile")
 async def get_profile(current_user: User = Depends(service.get_current_active_supervisor)):
-    print("ID is : ", current_user.id) 
+    print("ID is :", current_user.id) 
     return await service.get_supervisor_profile(current_user.id)
 
 @app.put("/profile", summary="Update supervisor profile")
