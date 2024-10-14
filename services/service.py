@@ -256,27 +256,34 @@ async def update_visit_status(visit_id: str, status: str):
     return {"message": "Visit status updated successfully"}
 
 # Supervisor Profile function
-async def get_supervisor_profile(supervisor_id):
+async def get_supervisor_profile(supervisor_id: str):
     # Strip whitespaces from supervisor_id
-    supervisor_id = str(supervisor_id).strip()
+    supervisor_id = supervisor_id.strip()
+
     # Log the supervisor ID for debugging
-    print(f"Looking for supervisor with user_id:{supervisor_id}")
+    print(f"Looking for supervisor with user_id: {supervisor_id}")
     
     # Fetch supervisor using the supervisor_id (string)
     supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
-    
-    print(supervisor)
     
     # If supervisor is not found, raise an HTTPException
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found in school_supervisors collection")
     
     # Attempt to fetch user details from the 'users' collection
-    user = await db.users.find_one({"_id": ObjectId(supervisor_id)})
+    try:
+        # Convert supervisor_id to ObjectId before querying users collection
+        user = await db.users.find_one({"_id": ObjectId(supervisor_id)})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid supervisor_id format: {e}")
     
     # If both supervisor and user are found, merge them
     if user:
-        return {**supervisor, **user}
+        # Merge dictionaries and avoid overriding fields from one collection with the other
+        merged_data = {**supervisor, **user}
+        # Optionally, convert ObjectId to string
+        merged_data["_id"] = str(merged_data["_id"])
+        return merged_data
     else:
         raise HTTPException(status_code=405, detail="User details for supervisor not found in users collection")
 
