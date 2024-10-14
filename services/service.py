@@ -255,17 +255,19 @@ async def update_visit_status(visit_id: str, status: str):
         raise HTTPException(status_code=404, detail="Visit location not found")
     return {"message": "Visit status updated successfully"}
 
-
 # Supervisor Profile function
 async def get_supervisor_profile(supervisor_id):
+    # Strip whitespaces from supervisor_id
+    supervisor_id = supervisor_id.strip()
+
     # Log the supervisor ID for debugging
-    print(f"Looking for supervisor with user_id: {supervisor_id}")
+    print(f"Looking for supervisor with user_id:{supervisor_id}")
     
     # Fetch supervisor using the supervisor_id (string)
     supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
-    supervisors = await db.school_supervisors.find().to_list(None)
-    print (supervisors)
+    
     print(supervisor)
+    
     # If supervisor is not found, raise an HTTPException
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found in school_supervisors collection")
@@ -278,7 +280,6 @@ async def get_supervisor_profile(supervisor_id):
         return {**supervisor, **user}
     else:
         raise HTTPException(status_code=405, detail="User details for supervisor not found in users collection")
-
 
 async def update_supervisor_profile(supervisor_id: str, profile_data: dict):
     result = await db.school_supervisors.update_one(
