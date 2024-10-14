@@ -121,21 +121,23 @@ async def get_supervisor_dashboard(supervisor_id: str):
     supervisor_id = supervisor_id.strip()
     supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
     if not supervisor:
-    
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
     # Get basic supervision stats
-    if supervisor["assigned_students"] == None:
-        total_students=0
-    else:
-         total_students = len(supervisor["assigned_students"])
-   
+    assigned_students = supervisor.get("assigned_students", [])
+    if not isinstance(assigned_students, list):
+        assigned_students = []
+    
+    total_students = len(assigned_students)
     completed_supervisions = await db.evaluations.count_documents({"supervisor_id": ObjectId(supervisor_id)})
     pending_supervisions = total_students - completed_supervisions
 
     # Get students details
-    students = await db.students.find({"_id": {"$in": supervisor["assigned_students"]}}).to_list(None)
-    
+    if assigned_students:
+        students = await db.students.find({"_id": {"$in": [ObjectId(id) for id in assigned_students]}}).to_list(None)
+    else:
+        students = []
+
     # Get notifications
     notifications = await db.notifications.find(
         {"user_id": ObjectId(supervisor_id)}
@@ -193,7 +195,7 @@ async def get_supervisor_dashboard(supervisor_id: str):
         "students": students,
         "notifications": notifications,
         "area_posted_to": location_posted,
-        "recent_activities": recent_activities[:10]  # Limit to 5 most recent activities
+        "recent_activities": recent_activities[:5]  # Limit to 5 most recent activities
     }
 async def get_student_list(supervisor_id: str, status: Optional[str] = None):
     supervisor = await db.school_supervisors.find_one({"user_id": ObjectId(supervisor_id)})
