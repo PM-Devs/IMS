@@ -118,13 +118,18 @@ async def is_token_blacklisted(token: str):
 
 # Supervisor Dashboard
 async def get_supervisor_dashboard(supervisor_id: str):
+    supervisor_id = supervisor_id.strip()
     supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
     if not supervisor:
     
         raise HTTPException(status_code=404, detail="Supervisor not found")
 
     # Get basic supervision stats
-    total_students = len(supervisor["assigned_students"])
+    if supervisor["assigned_students"] == None:
+        total_students=0
+    else:
+         total_students = len(supervisor["assigned_students"])
+   
     completed_supervisions = await db.evaluations.count_documents({"supervisor_id": ObjectId(supervisor_id)})
     pending_supervisions = total_students - completed_supervisions
 
@@ -227,6 +232,7 @@ async def is_student_at_company(student_id: str, company_id: str, max_distance: 
 
 # Visit Locations
 async def get_visit_locations(supervisor_id: str):
+    
     visit_locations = await db.visit_locations.find({"supervisor_id": ObjectId(supervisor_id)}).to_list(None)
     return visit_locations
 
@@ -261,7 +267,7 @@ async def get_supervisor_profile(supervisor_id: str):
     supervisor_id = supervisor_id.strip()
 
     # Log the supervisor ID for debugging
-    print(f"Looking for supervisor with user_id: {supervisor_id}")
+  
     
     # Fetch supervisor using the supervisor_id (string)
     supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
