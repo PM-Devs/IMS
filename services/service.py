@@ -262,9 +262,10 @@ async def get_supervisor_profile(supervisor_id):
     print(f"Looking for supervisor with user_id: {supervisor_id}")
     
     # Fetch supervisor using the supervisor_id (string)
-    supervisor = await db.school_supervisors.find({"user_id": supervisor_id})
+    supervisor = await db.school_supervisors.find_one({"user_id": supervisor_id})
     supervisors = await db.school_supervisors.find().to_list(None)
     print (supervisors)
+    print(supervisor)
     # If supervisor is not found, raise an HTTPException
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found in school_supervisors collection")
