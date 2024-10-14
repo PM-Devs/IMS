@@ -258,8 +258,7 @@ async def update_visit_status(visit_id: str, status: str):
 # Supervisor Profile function
 async def get_supervisor_profile(supervisor_id):
     # Strip whitespaces from supervisor_id
-    supervisor_id = supervisor_id.strip()
-
+    supervisor_id = str(supervisor_id).strip()
     # Log the supervisor ID for debugging
     print(f"Looking for supervisor with user_id:{supervisor_id}")
     
