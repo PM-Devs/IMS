@@ -397,11 +397,137 @@ async def create_evaluation(supervisor_id: str, application_id: str, evaluation_
 
 
 async def get_assigned_students(supervisor_id: str):
-    supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
-    if not supervisor:
-        raise HTTPException(status_code=404, detail="Supervisor not found")
-    students = await db.students.find({"_id": {"$in": supervisor["assigned_students"]}}).to_list(None)
-    return students
+    try:
+        # Validate supervisor_id
+        if not ObjectId.is_valid(supervisor_id):
+            raise HTTPException(status_code=400, detail="Invalid supervisor ID")
+
+        supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
+        if not supervisor:
+            raise HTTPException(status_code=404, detail="Supervisor not found")
+
+        current_date = datetime.utcnow()
+
+        pipeline = [
+            {"$match": {"_id": ObjectId(supervisor_id)}},
+            {"$unwind": "$students"},
+            {"$lookup": {
+                "from": "students",
+                "localField": "students",
+                "foreignField": "_id",
+                "as": "student_info"
+            }},
+            {"$unwind": "$student_info"},
+            {"$lookup": {
+                "from": "internships",
+                "localField": "student_info.active_internship",
+                "foreignField": "_id",
+                "as": "active_internship"
+            }},
+            {"$unwind": "$active_internship"},
+            {"$lookup": {
+                "from": "visit_locations",
+                "let": { "student_id": "$students", "internship_id": "$active_internship._id" },
+                "pipeline": [
+                    {"$match": {
+                        "$expr": {
+                            "$and": [
+                                { "$eq": ["$student_id", "$$student_id"] },
+                                { "$eq": ["$internship_id", "$$internship_id"] },
+                                { "$eq": ["$status", "completed"] }
+                            ]
+                        }
+                    }},
+                    { "$limit": 1 }
+                ],
+                "as": "visit"
+            }},
+            {"$lookup": {
+                "from": "evaluations",
+                "let": { "student_id": "$students", "internship_id": "$active_internship._id" },
+                "pipeline": [
+                    {"$match": {
+                        "$expr": {
+                            "$and": [
+                                { "$eq": ["$application_id", "$$student_id"] },
+                                { "$eq": ["$internship_id", "$$internship_id"] }
+                            ]
+                        }
+                    }},
+                    { "$limit": 1 }
+                ],
+                "as": "assessment"
+            }},
+            {"$project": {
+                "student_id": "$students",
+                "student_name": "$student_info.name",
+                "internship_title": "$active_internship.title",
+                "company_name": "$active_internship.company_name",
+                "start_date": "$active_internship.start_date",
+                "end_date": "$active_internship.end_date",
+                "duration": {
+                    "$divide": [
+                        { "$subtract": ["$active_internship.end_date", "$active_internship.start_date"] },
+                        86400000  # milliseconds in a day
+                    ]
+                },
+                "days_left": {
+                    "$ceil": {
+                        "$divide": [
+                            { "$subtract": ["$active_internship.end_date", current_date] },
+                            86400000
+                        ]
+                    }
+                },
+                "supervision_status": {
+                    "$switch": {
+                        "branches": [
+                            {
+                                "case": {"$and": [
+                                    { "$gt": [{ "$size": "$visit" }, 0] },
+                                    { "$gt": [{ "$size": "$assessment" }, 0] }
+                                ]},
+                                "then": "100%"
+                            },
+                            {
+                                "case": {"$and": [
+                                    { "$gt": [{ "$size": "$visit" }, 0] },
+                                    { "$eq": [{ "$size": "$assessment" }, 0] }
+                                ]},
+                                "then": "50%"
+                            }
+                        ],
+                        "default": "0%"
+                    }
+                },
+                "assessment_status": {
+                    "$cond": {
+                        "if": { "$gt": [{ "$size": "$assessment" }, 0] },
+                        "then": "Completed",
+                        "else": "Not started"
+                    }
+                },
+                "visit_status": {
+                    "$cond": {
+                        "if": { "$gt": [{ "$size": "$visit" }, 0] },
+                        "then": "Completed",
+                        "else": "Not visited"
+                    }
+                }
+            }}
+        ]
+
+        students = await db.school_supervisors.aggregate(pipeline).to_list(None)
+
+        if not students:
+            raise HTTPException(status_code=404, detail="No assigned students found")
+
+        return students
+
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 async def get_supervisor_workload(supervisor_id: str):
     supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})

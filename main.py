@@ -93,7 +93,6 @@ async def update_visit_status_endpoint(visit_id: str, status: str, current_user:
 async def get_profile(current_user: User = Depends(service.get_current_active_supervisor)):
     
     return await service.get_supervisor_profile(str(current_user.id))
-
 @app.put("/profile", summary="Update supervisor profile")
 async def update_profile(profile_data: dict, current_user: User = Depends(service.get_current_active_supervisor)):
     return await service.update_supervisor_profile(str(current_user.id), profile_data)
@@ -138,6 +137,32 @@ async def get_assigned_students_endpoint(supervisor_id: str, current_user: User 
 @app.get("/supervisors/{supervisor_id}/workload", summary="Get supervisor workload")
 async def get_supervisor_workload_endpoint(supervisor_id: str, current_user: User = Depends(service.get_current_active_supervisor)):
     return await service.get_supervisor_workload(supervisor_id)
+
+
+@app.get("/supervisor/{supervisor_id}/students", response_model=List[dict])
+async def get_supervisor_students(supervisor_id: str):
+    """
+    Retrieve assigned students for a given supervisor.
+    
+    Parameters:
+    - supervisor_id: The ID of the supervisor
+    
+    Returns:
+    - A list of assigned students with their internship details
+    
+    Raises:
+    - 400: If the supervisor ID is invalid
+    - 404: If the supervisor is not found or has no assigned students
+    - 500: For any other unexpected errors
+    """
+    try:
+        students = await service.get_assigned_students(supervisor_id)
+        return students
+    except HTTPException as http_ex:
+        raise http_ex
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
 
 @app.get("/", summary="Root endpoint")
 async def root():
