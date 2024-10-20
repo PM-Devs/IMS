@@ -329,7 +329,7 @@ async def mark_logbook(supervisor_id: str, logbook_id: str, status: str, comment
         {"$set": {"status": status, "supervisor_comments": comments, "updated_at": datetime.utcnow()}}
     )
     if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Logbook entry not found")
+        raise HTTPException(status_code=202, detail="Logbook entry not found")
     return {"message": "Logbook entry updated successfully"}
 
 # Final Reports
@@ -360,7 +360,7 @@ async def update_final_report(report_id: str, report_data: dict):
         {"$set": report_data}
     )
     if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Final report not found")
+        raise HTTPException(status_code=202, detail="Final report not found")
     return {"message": "Final report updated successfully"}
 
 async def get_final_report(report_id: str):
