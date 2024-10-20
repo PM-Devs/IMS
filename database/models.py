@@ -291,7 +291,7 @@ class SchoolSupervisor(BaseModelWithConfig):
     assigned_students: Optional[List[PyObjectId]] = None
     qualifications: Optional[List[str]] = None
     areas_of_expertise: Optional[List[str]] = None
-    zone_id: Optional[PyObjectId] = Non
+    zone_id: Optional[PyObjectId] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 

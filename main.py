@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status,Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
-from database.models import User, Student, SchoolSupervisor, Evaluation, Notification, VisitLocation, Token, LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport, ChatMessage, ChatRoom
+from database.models import User, Student, SchoolSupervisor, Evaluation, Notification, VisitLocation, Token, LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport
 from services import service
 from middleware.log import log_middleware
 from middleware.auth import auth_middleware
