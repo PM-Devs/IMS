@@ -1,7 +1,7 @@
+from bson import ObjectId
 from pydantic import BaseModel, Field, EmailStr, HttpUrl, ConfigDict, GetCoreSchemaHandler
 from typing import Any, Dict, Optional, List, Annotated
 from datetime import datetime
-from bson import ObjectId
 from pydantic_core import core_schema
 
 class PyObjectId(ObjectId):
@@ -31,9 +31,9 @@ class PyObjectId(ObjectId):
 class BaseModelWithConfig(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
-        json_encoders={ObjectId: str},
-        populate_by_name=True  # Allows population by alias
+        json_encoders={ObjectId: str}
     )
+
 class Coordinate(BaseModelWithConfig):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -50,20 +50,12 @@ class Zone(BaseModelWithConfig):
     id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
     name: Optional[str] = None
     description: Optional[str] = None
+    region:Optional[str] = None
     boundaries: Optional[List[Coordinate]] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
-class Area(BaseModelWithConfig):
-    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
-    name: Optional[str] = None
-    description: Optional[str] = None
-    boundaries: Optional[List[Coordinate]] = None
-    zone_id: Optional[PyObjectId] = None
-    supervisors: Optional[List[PyObjectId]] = None
-    students: Optional[List[PyObjectId]] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
 
 class ContactInfo(BaseModelWithConfig):
     phone: Optional[str] = None
@@ -299,8 +291,7 @@ class SchoolSupervisor(BaseModelWithConfig):
     assigned_students: Optional[List[PyObjectId]] = None
     qualifications: Optional[List[str]] = None
     areas_of_expertise: Optional[List[str]] = None
-    zone_id: Optional[PyObjectId] = None
-    area_id: Optional[PyObjectId] = None
+    zone_id: Optional[PyObjectId] = Non
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
@@ -319,28 +310,8 @@ class Student(BaseModelWithConfig):
     department_id: Optional[PyObjectId] = None
     programme_id: Optional[PyObjectId] = None
     zone_id: Optional[PyObjectId] = None
-    area_id: Optional[PyObjectId] = None
     current_location: Optional[Coordinate] = None
     assigned_supervisor: Optional[PyObjectId] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-
-class ChatMessage(BaseModelWithConfig):
-    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
-    sender_id: Optional[PyObjectId] = None
-    receiver_id: Optional[PyObjectId] = None
-    content: Optional[str] = None
-    timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    read: Optional[bool] = False
-    read_at: Optional[datetime] = None
-
-class ChatRoom(BaseModelWithConfig):
-    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
-    participants: Optional[List[PyObjectId]] = None
-    messages: Optional[List[PyObjectId]] = None
-    room_type: Optional[str] = None
-    zone_id: Optional[PyObjectId] = None
-    area_id: Optional[PyObjectId] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
@@ -379,41 +350,9 @@ class AssumptionOfDuty(BaseModelWithConfig):
     internship_id: Optional[PyObjectId] = None
     file_path: Optional[str] = None
     submission_date: Optional[datetime] = None
-    status: Optional[str] = "Submitted"
+    status: Optional[bool] = False
     reviewer_id: Optional[PyObjectId] = None
     review_date: Optional[datetime] = None
     comments: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-
-class SupervisorDistribution(BaseModelWithConfig):
-    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
-    zone_id: Optional[PyObjectId] = None
-    area_id: Optional[PyObjectId] = None
-    supervisor_id: Optional[PyObjectId] = None
-    assigned_students: Optional[List[PyObjectId]] = None
-    total_students: Optional[int] = None
-    correlation_score: Optional[float] = None
-    supervision_time: Optional[float] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-
-class DistributionRun(BaseModelWithConfig):
-    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
-    run_date: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    total_supervisors: Optional[int] = None
-    total_students: Optional[int] = None
-    distribution_results: Optional[List[PyObjectId]] = None
-    status: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-
-class SupervisorWorkload(BaseModelWithConfig):
-    id: Optional[Annotated[PyObjectId, Field(alias="_id")]] = None
-    supervisor_id: Optional[PyObjectId] = None
-    total_students: Optional[int] = None
-    total_supervision_time: Optional[float] = None
-    zones: Optional[List[PyObjectId]] = None
-    areas: Optional[List[PyObjectId]] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)

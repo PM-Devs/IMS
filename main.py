@@ -139,7 +139,7 @@ async def get_supervisor_workload_endpoint(supervisor_id: str, current_user: Use
     return await service.get_supervisor_workload(supervisor_id)
 
 
-@app.get("/supervisor/{supervisor_id}/students", response_model=List[dict])
+@app.get("/supervisor/{supervisor_id}/assigned-students", response_model=List[dict])
 async def get_supervisor_students(supervisor_id: str):
     """
     Retrieve assigned students for a given supervisor.

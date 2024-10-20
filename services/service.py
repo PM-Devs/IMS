@@ -9,10 +9,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from geopy.distance import geodesic
 from database.models import (
     PyObjectId, Rating, User, Student, SchoolSupervisor, Evaluation, Notification, VisitLocation, AppCredentials, Token,
-    LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport, WhiteList, Zone, Area, ChatMessage, ChatRoom,
-    Company, Internship, Application, SupervisorDistribution, DistributionRun, SupervisorWorkload,
-    ChatRoom
-
+    LogBookEntry, MonthlySummary, FinalAssessment, AttachmentReport, WhiteList, Zone,
+    Company, Internship, Application
 )
 from database.config import MONGODB_URI, DATABASE_NAME, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_DAYS
 
@@ -145,15 +143,14 @@ async def get_supervisor_dashboard(supervisor_id: str):
 
     # Find the area the supervisor is posted to
     zone = None
-    area = None
+  
     if supervisor.get("zone_id"):
         zone = await db.zones.find_one({"_id": supervisor["zone_id"]})
-    if supervisor.get("area_id"):
-        area = await db.areas.find_one({"_id": supervisor["area_id"]})
+   
 
     location_posted = {
         "zone": zone["name"] if zone else None,
-        "area": area["name"] if area else None
+        
     }
 
     # Get recent activities
@@ -245,7 +242,7 @@ async def update_visit_location(visit_location_id: str, visit_location: VisitLoc
         {"$set": visit_location.dict(exclude={"id"})}
     )
     if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Visit location not found")
+        raise HTTPException(status_code=202, detail="Visit location not found")
     return True
 
 async def delete_visit_location(visit_location_id: str):
@@ -529,21 +526,35 @@ async def get_assigned_students(supervisor_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-async def get_supervisor_workload(supervisor_id: str):
-    supervisor = await db.school_supervisors.find_one({"_id": ObjectId(supervisor_id)})
-    if not supervisor:
-        raise HTTPException(status_code=404, detail="Supervisor not found")
-    
-    workload = await db.supervisor_workloads.find_one({"supervisor_id": ObjectId(supervisor_id)})
-    if not workload:
-        workload = SupervisorWorkload(
-            supervisor_id=ObjectId(supervisor_id),
-            total_students=len(supervisor["assigned_students"]),
-            total_supervision_time=0,
-            zones=[supervisor["zone_id"]],
-            areas=[supervisor["area_id"]] if supervisor.get("area_id") else []
-        )
-        await db.supervisor_workloads.insert_one(workload.dict(by_alias=True))
-    
-    return workload
+async def get_supervisor_workload(supervisor_id: str) -> Dict[str, Any]:
+    # Convert string ID to PyObjectId
+    supervisor_object_id = PyObjectId(supervisor_id)
 
+    # Fetch the supervisor from the database
+    supervisor_data = await db.school_supervisors.find_one({"_id": supervisor_object_id})
+    if not supervisor_data:
+        raise HTTPException(status_code=404, detail="Supervisor not found")
+
+    # Create a SchoolSupervisor instance
+    supervisor = SchoolSupervisor(**supervisor_data)
+
+    # Calculate workload information
+    total_students = len(supervisor.assigned_students) if supervisor.assigned_students else 0
+    
+    # Fetch all applications for the assigned students
+    student_ids = [PyObjectId(student_id) for student_id in supervisor.assigned_students]
+    applications = await db.applications.find({"student_id": {"$in": student_ids}}).to_list(None)
+
+    # Calculate total supervision time (assuming each application requires 1 hour of supervision)
+    total_supervision_time = len(applications)
+
+    # Prepare the workload information
+    workload_info = {
+        "supervisor_id": str(supervisor.id),
+        "total_students": total_students,
+        "total_supervision_time": total_supervision_time,
+        "zone_id": str(supervisor.zone_id) if supervisor.zone_id else None,
+        "department_id": str(supervisor.department_id) if supervisor.department_id else None
+    }
+
+    return workload_info
